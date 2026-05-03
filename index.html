@@ -231,6 +231,143 @@ table.dt .g{color:var(--green)} table.dt .r{color:var(--red)} table.dt .w{color:
 .inp-row textarea:focus{outline:none;border-color:var(--purple)}
 .sbtn{padding:8px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:500;border:1px solid var(--purple);border-radius:var(--r);cursor:pointer;background:var(--purple);color:#fff;transition:all .15s;flex-shrink:0}
 .sbtn:hover{background:transparent;color:var(--purple)} .sbtn:disabled{opacity:.3;cursor:not-allowed}
+
+/* ══════════════════════════════════════════════
+   MOBILE — max 768px
+   Desktop layout is untouched above this block
+══════════════════════════════════════════════ */
+@media(max-width:768px){
+  html,body{overflow:auto;height:auto}
+
+  /* App shell — single column, no fixed height */
+  .app{
+    display:flex;
+    flex-direction:column;
+    height:auto;
+    min-height:100vh;
+    overflow:visible;
+    padding-bottom:56px; /* room for bottom nav */
+  }
+
+  /* ── Header ── */
+  header{
+    grid-column:unset;
+    flex-wrap:wrap;
+    gap:6px;
+    padding:8px 12px;
+    height:auto;
+  }
+  .logo{padding-right:10px;margin-right:8px}
+  .ltxt{font-size:12px}
+  .lsub{display:none}
+  .scenario-bar{
+    border-right:none;
+    margin-right:0;
+    padding:0;
+    order:3;
+    width:100%;
+    padding-top:4px;
+    border-top:1px solid var(--br);
+  }
+  .hkpis{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    width:100%;
+    order:2;
+    overflow:visible;
+    border-top:1px solid var(--br);
+    padding-top:4px;
+  }
+  .hkpi{
+    padding:4px 8px;
+    border-right:1px solid var(--br);
+  }
+  .hkpi:nth-child(3n){border-right:none}
+  .hkpi .hl{font-size:8px}
+  .hkpi .hv{font-size:13px}
+  .api-zone{margin-left:auto;padding-left:10px}
+
+  /* ── Panels — show/hide via JS tabs ── */
+  .sidebar,.main,.agent{
+    grid-column:unset;
+    grid-row:unset;
+    width:100%;
+    height:auto;
+    overflow:visible;
+    border:none;
+    display:none; /* hidden until tab activated */
+  }
+  .sidebar.mob-active,
+  .main.mob-active,
+  .agent.mob-active{display:block}
+
+  /* Agent panel needs flex when active */
+  .agent.mob-active{
+    display:flex;
+    flex-direction:column;
+    height:calc(100vh - 56px - 110px); /* full height minus header & nav */
+    min-height:400px;
+  }
+  .msgs{flex:1;overflow-y:auto}
+
+  /* ── Sidebar inputs ── */
+  .sidebar{padding:12px}
+  .ig2{grid-template-columns:1fr 1fr}
+
+  /* ── Main dashboard grids ── */
+  .mets4,.mets5{grid-template-columns:repeat(2,1fr)}
+  .mets3{grid-template-columns:repeat(2,1fr)}
+  .mets2{grid-template-columns:1fr 1fr}
+  .g2,.g3{grid-template-columns:1fr}
+  .risk-row{grid-template-columns:1fr 1fr}
+
+  /* Profitability stages — 2 per row */
+  .prof-stages{grid-template-columns:repeat(2,1fr);gap:8px}
+  .prof-stage::after{display:none}
+
+  /* Waterfall label narrower */
+  .wf-lbl{width:90px;font-size:10px}
+  .wf-val{width:55px;font-size:10px}
+
+  /* Monthly table — horizontal scroll already there */
+  .mo-scroll{border-radius:var(--r)}
+
+  /* Charts — allow to be full width */
+  .chart-card{padding:10px}
+
+  /* ── Bottom tab bar ── */
+  .mob-nav{
+    position:fixed;
+    bottom:0;left:0;right:0;
+    height:56px;
+    background:var(--s1);
+    border-top:1px solid var(--br);
+    display:flex;
+    z-index:1000;
+  }
+  .mob-tab{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    font-size:9px;
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--tx3);
+    cursor:pointer;
+    border:none;
+    background:transparent;
+    letter-spacing:.04em;
+    transition:color .15s;
+  }
+  .mob-tab svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .mob-tab.on{color:var(--purple)}
+  .mob-tab.on svg{stroke:var(--purple)}
+}
+
+/* Hide bottom nav on desktop */
+.mob-nav{display:none}
 </style>
 </head>
 <body>
@@ -475,8 +612,57 @@ table.dt .g{color:var(--green)} table.dt .r{color:var(--red)} table.dt .w{color:
 
 </div><!-- /app -->
 
+<!-- Mobile bottom nav (hidden on desktop via CSS) -->
+<nav class="mob-nav">
+  <button class="mob-tab on" id="mtab-inputs" onclick="mobTab('inputs',this)">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Inputs
+  </button>
+  <button class="mob-tab" id="mtab-dash" onclick="mobTab('dash',this)">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Dashboard
+  </button>
+  <button class="mob-tab" id="mtab-agent" onclick="mobTab('agent',this)">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    AI Chat
+  </button>
+</nav>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
+// ── Mobile tab switcher ───────────────────────────────────────────────────────
+function mobTab(tab, btn) {
+  if (window.innerWidth > 768) return;
+  document.querySelectorAll('.mob-tab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelector('.sidebar').classList.remove('mob-active');
+  document.querySelector('.main').classList.remove('mob-active');
+  document.querySelector('.agent').classList.remove('mob-active');
+  if (tab === 'inputs')  document.querySelector('.sidebar').classList.add('mob-active');
+  if (tab === 'dash')    document.querySelector('.main').classList.add('mob-active');
+  if (tab === 'agent')   document.querySelector('.agent').classList.add('mob-active');
+  // redraw charts after becoming visible
+  if (tab === 'dash') setTimeout(() => { if(chart12Inst) chart12Inst.resize(); if(chartCACInst) chartCACInst.resize(); }, 50);
+}
+
+function initMobileLayout() {
+  if (window.innerWidth <= 768) {
+    mobTab('inputs', document.getElementById('mtab-inputs'));
+  }
+}
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 768) {
+    // restore desktop — remove mob-active so desktop grid takes over
+    document.querySelector('.sidebar').classList.remove('mob-active');
+    document.querySelector('.main').classList.remove('mob-active');
+    document.querySelector('.agent').classList.remove('mob-active');
+  } else {
+    // ensure one panel is visible on shrink
+    const anyActive = document.querySelector('.mob-active');
+    if (!anyActive) mobTab('inputs', document.getElementById('mtab-inputs'));
+  }
+});
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const gv=id=>parseFloat(document.getElementById(id)?.value)||0;
 const f=(v,d=2)=>parseFloat(v).toFixed(d);
@@ -1414,6 +1600,7 @@ document.querySelectorAll('input[type=number]').forEach(el=>el.addEventListener(
 document.getElementById('fixedTotalBadge').textContent='₪4,000';
 addMsg('agent','Shalom! Dashboard live across all 6 sections — unit economics, growth drivers, 12-month sim, cash flow, risk factors, and scenario comparison.\n\nAsk me anything or switch scenarios (Base / Worst / Best) in the header.');
 calc();
+initMobileLayout();
 </script>
 </body>
 </html>
