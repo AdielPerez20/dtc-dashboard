@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DTC Simulator — ₪ NIS</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07080d; --s1:#0d0e15; --s2:#12131c; --s3:#181924; --s4:#1e1f2e;
+  --br:#252638; --br2:#333450;
+  --tx:#eceef8; --tx2:#a0a5c4; --tx3:#636888;
+  --green:#0dd68f; --green2:rgba(13,214,143,.1);
+  --amber:#f5a623; --amber2:rgba(245,166,35,.1);
+  --red:#ff4466; --red2:rgba(255,68,102,.1);
+  --blue:#4d9fff; --blue2:rgba(77,159,255,.1);
+  --purple:#9b7cff; --purple2:rgba(155,124,255,.1);
+  --teal:#00d4c8;
+  --r:6px; --rl:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--tx);font-size:14px;height:100%;overflow:hidden}
+
+/* ── App shell ── */
+.app{display:grid;grid-template-rows:50px 1fr;grid-template-columns:252px 1fr 310px;height:100vh;overflow:hidden}
+
+/* ── Header ── */
+header{grid-column:1/-1;display:flex;align-items:center;border-bottom:1px solid var(--br);background:var(--s1);padding:0 16px;gap:0}
+.logo{display:flex;align-items:center;gap:9px;padding-right:16px;border-right:1px solid var(--br);margin-right:12px;flex-shrink:0}
+.lmark{width:26px;height:26px;border-radius:5px;background:var(--purple2);border:1px solid var(--purple);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:var(--purple)}
+.ltxt{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:-.01em}
+.lsub{font-size:10px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;margin-top:1px}
+
+/* ── Scenario pills in header ── */
+.scenario-bar{display:flex;gap:4px;padding:0 12px;border-right:1px solid var(--br);margin-right:12px}
+.scn-pill{padding:5px 12px;font-size:11px;font-family:'IBM Plex Mono',monospace;border:1px solid var(--br2);border-radius:12px;cursor:pointer;color:var(--tx3);background:transparent;transition:all .15s;white-space:nowrap}
+.scn-pill:hover{color:var(--tx2);border-color:var(--br2)}
+.scn-pill.base.on{background:var(--blue2);border-color:var(--blue);color:var(--blue)}
+.scn-pill.worst.on{background:var(--red2);border-color:var(--red);color:var(--red)}
+.scn-pill.best.on{background:var(--green2);border-color:var(--green);color:var(--green)}
+.scn-badge{font-size:8px;padding:1px 4px;border-radius:3px;margin-left:3px;vertical-align:middle}
+.worst .scn-badge{background:var(--red2);color:var(--red)}
+.best .scn-badge{background:var(--green2);color:var(--green)}
+
+/* ── Header KPIs — max 6 ── */
+.hkpis{display:flex;gap:0;flex:1;overflow:hidden}
+.hkpi{display:flex;flex-direction:column;padding:5px 14px;border-right:1px solid var(--br);cursor:default;flex-shrink:0}
+.hkpi .hl{font-size:10px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase}
+.hkpi .hv{font-size:16px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--tx);line-height:1.2}
+.hkpi .hv.g{color:var(--green)} .hkpi .hv.r{color:var(--red)} .hkpi .hv.a{color:var(--amber)}
+.api-zone{display:flex;align-items:center;gap:7px;margin-left:auto;padding-left:14px;border-left:1px solid var(--br);flex-shrink:0}
+.api-lbl{font-size:10px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.kdot{width:7px;height:7px;border-radius:50%;background:var(--br2);flex-shrink:0}
+.kdot.ok{background:var(--green)}
+
+/* ── Sidebar ── */
+.sidebar{grid-column:1;grid-row:2;border-right:1px solid var(--br);overflow-y:auto;background:var(--s1);padding:14px;scrollbar-width:thin;scrollbar-color:var(--br2) transparent}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--br2)}
+.sec-hdr{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--tx3);letter-spacing:.12em;text-transform:uppercase;margin:16px 0 8px;display:flex;align-items:center;justify-content:space-between}
+.sec-hdr:first-child{margin-top:0}
+.sec-hdr::before{content:'';width:3px;height:3px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sec-dot{width:3px;height:3px;border-radius:50%;background:var(--tx3)}
+.ig{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}
+.ig label{font-size:11px;color:var(--tx2)}
+.pf{position:relative}
+.pf .sym{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--tx3);pointer-events:none;font-family:'IBM Plex Mono',monospace}
+.pf input,.ig input[type=number]{padding-left:20px!important}
+input[type=number]{width:100%;font-size:13px;font-family:'IBM Plex Mono',monospace;padding:6px 8px;border:1px solid var(--br);border-radius:var(--r);background:var(--s2);color:var(--tx);transition:border-color .15s}
+input[type=number]:focus{outline:none;border-color:var(--purple)}
+input[type=number]:hover{border-color:var(--br2)}
+.ig2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mdiv{border:none;border-top:1px solid var(--br);margin:12px 0}
+.toggle-row{display:flex;gap:4px;margin-bottom:6px}
+.tog{flex:1;padding:5px 4px;font-size:9px;font-family:'IBM Plex Mono',monospace;border:1px solid var(--br);border-radius:var(--r);cursor:pointer;background:transparent;color:var(--tx3);text-align:center;transition:all .15s}
+.tog.on{background:var(--purple2);border-color:var(--purple);color:var(--purple)}
+.info-note{font-size:10px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;padding:5px 7px;background:var(--s3);border-radius:var(--r);border:1px solid var(--br);margin-bottom:6px;line-height:1.5}
+
+/* ── Main area ── */
+.main{grid-column:2;grid-row:2;overflow-y:auto;padding:14px 16px;scrollbar-width:thin;scrollbar-color:var(--br2) transparent}
+.main::-webkit-scrollbar{width:3px}
+.main::-webkit-scrollbar-thumb{background:var(--br2)}
+
+/* ── Section headers ── */
+.dash-sec{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase;margin:18px 0 10px;display:flex;align-items:center;gap:8px}
+.dash-sec:first-child{margin-top:0}
+.dash-sec .num{width:18px;height:18px;border-radius:4px;background:var(--s3);border:1px solid var(--br);display:flex;align-items:center;justify-content:center;font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--tx3);flex-shrink:0}
+.dash-sec .badge{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:400;padding:1px 7px;border-radius:3px}
+.badge.g{background:var(--green2);color:var(--green)} .badge.r{background:var(--red2);color:var(--red)} .badge.a{background:var(--amber2);color:var(--amber)}
+
+/* ── Metric cards ── */
+.mets4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.mets5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
+.mets3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.mets2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.met{background:var(--s2);border:1px solid var(--br);border-radius:var(--rl);padding:11px 13px;position:relative;overflow:hidden}
+.met::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity .2s}
+.met.good::after{background:var(--green);opacity:1} .met.warn::after{background:var(--amber);opacity:1} .met.bad::after{background:var(--red);opacity:1} .met.info::after{background:var(--blue);opacity:1}
+.met .ml{font-size:10px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;margin-bottom:5px;text-transform:uppercase}
+.met .mv{font-size:20px;font-weight:600;color:var(--tx);font-family:'IBM Plex Mono',monospace;line-height:1.2}
+.met .ms{font-size:11px;color:var(--tx3);margin-top:3px}
+.met.good .mv{color:var(--green)} .met.warn .mv{color:var(--amber)} .met.bad .mv{color:var(--red)}
+
+/* ── Tables ── */
+.tbl-wrap{background:var(--s2);border:1px solid var(--br);border-radius:var(--rl);overflow:hidden;margin-bottom:10px}
+table.dt{width:100%;border-collapse:collapse;font-size:11px}
+table.dt th{text-align:left;font-size:10px;font-weight:500;color:var(--tx3);padding:7px 11px;border-bottom:1px solid var(--br);font-family:'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;background:var(--s3)}
+table.dt td{padding:8px 11px;border-bottom:1px solid rgba(37,38,56,.5);color:var(--tx);font-family:'IBM Plex Mono',monospace;font-size:12px}
+table.dt tr:last-child td{border-bottom:none} table.dt tr:hover td{background:var(--s3)}
+table.dt .g{color:var(--green)} table.dt .r{color:var(--red)} table.dt .w{color:var(--amber)} table.dt .bold{font-weight:500}
+
+/* ── Waterfall bars ── */
+.wf-wrap{background:var(--s2);border:1px solid var(--br);border-radius:var(--rl);padding:12px 14px;margin-bottom:10px}
+.wf-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.wf-row:last-child{margin-bottom:0;padding-top:6px;border-top:1px solid var(--br)}
+.wf-lbl{width:130px;font-size:11px;color:var(--tx2);text-align:right;flex-shrink:0;font-family:'IBM Plex Mono',monospace}
+.wf-trk{flex:1;background:var(--s3);border-radius:3px;height:9px;overflow:hidden}
+.wf-fil{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.wf-val{width:70px;font-size:11px;font-weight:500;color:var(--tx);font-family:'IBM Plex Mono',monospace;flex-shrink:0}
+
+/* ── Alert strips ── */
+.alerts{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.alert{padding:9px 12px;border-radius:var(--r);font-size:12px;line-height:1.55;border-left:3px solid;font-family:'IBM Plex Mono',monospace}
+.alert.good{background:var(--green2);border-color:var(--green);color:var(--green)}
+.alert.warn{background:var(--amber2);border-color:var(--amber);color:var(--amber)}
+.alert.bad{background:var(--red2);border-color:var(--red);color:var(--red)}
+.alert.info{background:var(--blue2);border-color:var(--blue);color:var(--blue)}
+
+/* ── Charts ── */
+.chart-card{background:var(--s2);border:1px solid var(--br);border-radius:var(--rl);padding:12px 14px;margin-bottom:10px}
+.chart-legend{display:flex;gap:12px;font-size:10px;color:var(--tx3);margin-bottom:8px;font-family:'IBM Plex Mono',monospace}
+.chart-legend span{display:flex;align-items:center;gap:4px}
+.cl{width:8px;height:8px;border-radius:2px;display:inline-block;flex-shrink:0}
+.chart-wrap{position:relative}
+
+/* ── Grid layouts ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+
+/* ── Monthly table ── */
+.mo-scroll{overflow-x:auto;margin-bottom:10px;border-radius:var(--rl);border:1px solid var(--br)}
+.mo-tbl{width:100%;border-collapse:collapse;font-size:11px;min-width:900px}
+.mo-tbl th{text-align:right;font-size:10px;color:var(--tx3);padding:6px 9px;border-bottom:1px solid var(--br);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;background:var(--s3);white-space:nowrap}
+.mo-tbl th:first-child{text-align:left}
+.mo-tbl td{padding:6px 9px;border-bottom:1px solid rgba(37,38,56,.5);text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--tx);white-space:nowrap}
+.mo-tbl td:first-child{text-align:left;color:var(--tx2)}
+.mo-tbl tr:last-child td{border-bottom:none}
+.mo-tbl .pos{color:var(--green)} .mo-tbl .neg{color:var(--red)}
+.mo-tbl .brk td{background:rgba(13,214,143,.05)}
+.mo-tbl .brk td:first-child::after{content:' ✦';color:var(--green);font-size:8px}
+
+/* ── Cash flow card ── */
+.cf-card{background:var(--s2);border:1px solid var(--br);border-radius:var(--rl);padding:12px 14px;margin-bottom:10px}
+.cf-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(37,38,56,.5);font-size:12px}
+.cf-row:last-child{border-bottom:none;font-weight:600;padding-top:8px}
+.cf-lbl{color:var(--tx2);font-family:'IBM Plex Mono',monospace}
+.cf-val{font-family:'IBM Plex Mono',monospace;color:var(--tx)}
+.cf-val.pos{color:var(--green)} .cf-val.neg{color:var(--red)}
+
+/* ── Risk row ── */
+.risk-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.risk-met{background:var(--s2);border:1px solid var(--br);border-radius:var(--r);padding:8px 11px;display:flex;align-items:center;justify-content:space-between}
+.risk-lbl{font-size:11px;color:var(--tx2);font-family:'IBM Plex Mono',monospace}
+.risk-val{font-size:13px;font-weight:500;font-family:'IBM Plex Mono',monospace;color:var(--amber)}
+
+/* ── Break-even mix widget ── */
+.bemix-wrap{background:var(--s3);border:1px solid var(--br);border-radius:var(--r);padding:10px 11px;font-family:'IBM Plex Mono',monospace}
+.bemix-title{font-size:9px;color:var(--tx3);letter-spacing:.09em;text-transform:uppercase;margin-bottom:8px}
+.bemix-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.bemix-lbl{font-size:10px;color:var(--tx2)}
+.bemix-val{font-size:12px;font-weight:500}
+.bemix-bar-wrap{height:6px;background:var(--s2);border-radius:3px;overflow:hidden;margin:6px 0 8px;position:relative}
+.bemix-bar-seg{height:100%;border-radius:3px;position:absolute;top:0;transition:all .4s}
+.bemix-marker{position:absolute;top:-3px;width:2px;height:12px;border-radius:1px;transition:left .4s}
+.bemix-status{font-size:10px;padding:5px 8px;border-radius:var(--r);border-left:2px solid;line-height:1.5;margin-top:4px}
+
+/* ── Profitability Waterfall ── */
+.prof-wrap{background:var(--s2);border:1px solid var(--br);border-radius:var(--rl);padding:16px;margin-bottom:10px}
+.prof-stages{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;margin-bottom:14px}
+.prof-stage{display:flex;flex-direction:column;align-items:center;position:relative;padding:0 8px}
+.prof-stage::after{content:'→';position:absolute;right:-8px;top:50%;transform:translateY(-50%);color:var(--tx3);font-size:14px;z-index:1}
+.prof-stage:last-child::after{display:none}
+.prof-box{width:100%;border-radius:var(--r);padding:12px 10px;text-align:center;border:1px solid;position:relative;transition:all .3s}
+.prof-label{font-size:10px;color:var(--tx2);font-family:'IBM Plex Mono',monospace;text-align:center;margin-bottom:6px;line-height:1.4}
+.prof-val{font-size:18px;font-weight:600;font-family:'IBM Plex Mono',monospace;line-height:1.2}
+.prof-pct{font-size:11px;font-family:'IBM Plex Mono',monospace;margin-top:3px;opacity:.8}
+.prof-target{font-size:9px;font-family:'IBM Plex Mono',monospace;margin-top:5px;padding:2px 6px;border-radius:3px;display:inline-block}
+.prof-stage.green .prof-box{background:rgba(13,214,143,.08);border-color:rgba(13,214,143,.3)}
+.prof-stage.green .prof-val{color:var(--green)}
+.prof-stage.green .prof-target{background:rgba(13,214,143,.12);color:var(--green)}
+.prof-stage.amber .prof-box{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.3)}
+.prof-stage.amber .prof-val{color:var(--amber)}
+.prof-stage.amber .prof-target{background:rgba(245,166,35,.12);color:var(--amber)}
+.prof-stage.red .prof-box{background:rgba(255,68,102,.08);border-color:rgba(255,68,102,.3)}
+.prof-stage.red .prof-val{color:var(--red)}
+.prof-stage.red .prof-target{background:rgba(255,68,102,.12);color:var(--red)}
+.prof-waterfall{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.prof-wf-row{display:flex;align-items:center;gap:8px;font-size:11px;font-family:'IBM Plex Mono',monospace}
+.prof-wf-lbl{width:180px;flex-shrink:0;color:var(--tx2)}
+.prof-wf-bar-wrap{flex:1;height:10px;background:var(--s3);border-radius:3px;overflow:hidden}
+.prof-wf-bar{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.prof-wf-val{width:75px;text-align:right;flex-shrink:0}
+.prof-insight{padding:10px 14px;border-radius:var(--r);font-size:12px;line-height:1.6;border-left:3px solid;font-family:'IBM Plex Mono',monospace;margin-top:10px}
+
+/* ── Agent ── */
+.agent{grid-column:3;grid-row:2;display:flex;flex-direction:column;border-left:1px solid var(--br);background:var(--s1);overflow:hidden}
+.agent-hdr{padding:11px 14px;border-bottom:1px solid var(--br);display:flex;align-items:center;gap:9px;flex-shrink:0}
+.av{width:27px;height:27px;border-radius:50%;background:var(--purple2);border:1px solid var(--purple);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--purple);flex-shrink:0}
+.an{font-family:'Syne',sans-serif;font-size:13px;font-weight:700}
+.as{font-size:10px;color:var(--green);font-family:'IBM Plex Mono',monospace}
+.as.thinking{color:var(--amber)}
+.msgs{flex:1;padding:11px 13px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--br2) transparent}
+.msgs::-webkit-scrollbar{width:3px}
+.msgs::-webkit-scrollbar-thumb{background:var(--br2)}
+.msg{display:flex;flex-direction:column;gap:2px}
+.msg.user{align-items:flex-end} .msg.agent{align-items:flex-start}
+.bbl{padding:9px 12px;font-size:12px;line-height:1.6;max-width:93%;border-radius:9px}
+.msg.user .bbl{background:var(--purple);color:#fff;border-radius:9px 9px 3px 9px}
+.msg.agent .bbl{background:var(--s2);color:var(--tx);border:1px solid var(--br);border-radius:9px 9px 9px 3px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.7}
+.mt{font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace}
+.typing{display:flex;align-items:center;gap:3px;padding:2px 0}
+.dot{width:4px;height:4px;border-radius:50%;background:var(--tx3);animation:bn .9s infinite}
+.dot:nth-child(2){animation-delay:.18s} .dot:nth-child(3){animation-delay:.36s}
+@keyframes bn{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+.chips{display:flex;flex-wrap:wrap;gap:4px;padding:8px 13px;border-top:1px solid var(--br);flex-shrink:0}
+.chip{padding:4px 10px;font-size:10px;font-family:'IBM Plex Mono',monospace;border:1px solid var(--br2);border-radius:3px;cursor:pointer;color:var(--tx2);background:transparent;transition:all .15s;white-space:nowrap}
+.chip:hover{border-color:var(--purple);color:var(--purple);background:var(--purple2)}
+.inp-area{padding:9px 13px;border-top:1px solid var(--br);flex-shrink:0}
+.inp-row{display:flex;gap:6px}
+.inp-row textarea{flex:1;font-size:12px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border:1px solid var(--br);border-radius:var(--r);background:var(--s2);color:var(--tx);resize:none;height:34px;line-height:1.4;transition:border-color .15s}
+.inp-row textarea:focus{outline:none;border-color:var(--purple)}
+.sbtn{padding:8px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:500;border:1px solid var(--purple);border-radius:var(--r);cursor:pointer;background:var(--purple);color:#fff;transition:all .15s;flex-shrink:0}
+.sbtn:hover{background:transparent;color:var(--purple)} .sbtn:disabled{opacity:.3;cursor:not-allowed}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <div class="logo">
+    <div class="lmark">D</div>
+    <div><div class="ltxt">DTC Simulator</div><div class="lsub">Israeli market · ₪ NIS</div></div>
+  </div>
+
+  <div class="scenario-bar">
+    <button class="scn-pill base on" onclick="setScenario('base',this)">Base</button>
+    <button class="scn-pill worst" onclick="setScenario('worst',this)">Worst <span class="scn-badge">CAC+30%</span></button>
+    <button class="scn-pill best" onclick="setScenario('best',this)">Best <span class="scn-badge">CAC-20%</span></button>
+  </div>
+
+  <div class="hkpis">
+    <div class="hkpi"><span class="hl">Profit/order (wtd)</span><span class="hv" id="hPO">—</span></div>
+    <div class="hkpi"><span class="hl">Monthly profit</span><span class="hv" id="hNP">—</span></div>
+    <div class="hkpi"><span class="hl">LTV:CAC</span><span class="hv" id="hLC">—</span></div>
+    <div class="hkpi"><span class="hl">CAC payback</span><span class="hv" id="hCPB">—</span></div>
+    <div class="hkpi"><span class="hl">Cash runway</span><span class="hv" id="hCR">—</span></div>
+    <div class="hkpi"><span class="hl">Break-even</span><span class="hv" id="hBE">—</span></div>
+  </div>
+  <div class="api-zone">
+    <div class="kdot ok" id="kdot"></div>
+    <span class="api-lbl">AI active</span>
+  </div>
+</header>
+
+<!-- ═══ SIDEBAR ═══ -->
+<div class="sidebar">
+
+  <div class="sec-hdr" style="margin-top:0">01 · Product</div>
+  <div class="ig"><label>Sticks per box</label><input id="sticks" type="number" value="30" min="1"></div>
+  <div class="ig2">
+    <div class="ig"><label>Price incl. VAT (₪)</label><div class="pf"><span class="sym">₪</span><input id="priceVat" type="number" value="119.9" step="1"></div></div>
+    <div class="ig"><label>VAT rate (%)</label><div class="pf"><span class="sym">%</span><input id="vatRate" type="number" value="18" step="1"></div></div>
+  </div>
+  <div class="ig"><label>COGS per box (₪)</label><div class="pf"><span class="sym">₪</span><input id="cogs" type="number" value="44" step="0.5"></div></div>
+  <div class="ig2" id="perStickDisplay" style="margin-top:2px">
+    <div class="ig"><label style="font-size:9px;color:var(--tx3)">Price per stick</label><div style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--tx2);padding:6px 9px;background:var(--s3);border:1px solid var(--br);border-radius:var(--r)" id="pricePerStick">—</div></div>
+    <div class="ig"><label style="font-size:9px;color:var(--tx3)">COGS per stick</label><div style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--tx2);padding:6px 9px;background:var(--s3);border:1px solid var(--br);border-radius:var(--r)" id="cogsPerStick">—</div></div>
+  </div>
+
+  <div class="mdiv"></div>
+  <div class="sec-hdr">02 · Order costs</div>
+  <div class="ig2">
+    <div class="ig"><label>Fulfillment (₪)</label><div class="pf"><span class="sym">₪</span><input id="fulfill" type="number" value="20" step="0.5"></div></div>
+    <div class="ig"><label>Shipping cost (₪)</label><div class="pf"><span class="sym">₪</span><input id="shipCost" type="number" value="30" step="1"></div></div>
+  </div>
+  <div class="ig2">
+    <div class="ig"><label>Ship charged (₪)</label><div class="pf"><span class="sym">₪</span><input id="shipRev" type="number" value="30" step="1"></div></div>
+    <div class="ig"><label>Payment fee (%)</label><div class="pf"><span class="sym">%</span><input id="payFee" type="number" value="2.5" step="0.1"></div></div>
+  </div>
+  <div class="ig"><label>CAC (₪)</label><div class="pf"><span class="sym">₪</span><input id="cac" type="number" value="40" step="5"></div></div>
+  <div class="ig"><label>Repeat customer rate (%)</label><div class="pf"><span class="sym">%</span><input id="repeatRate" type="number" value="35" step="1" max="100"></div></div>
+
+  <div class="mdiv"></div>
+  <div class="sec-hdr">02c · Traffic & acquisition</div>
+  <div class="ig2">
+    <div class="ig"><label>Conversion rate (%)</label><div class="pf"><span class="sym">%</span><input id="cvr" type="number" value="2.5" step="0.1" min="0.1" max="10"></div></div>
+    <div class="ig"><label>Organic orders (%)</label><div class="pf"><span class="sym">%</span><input id="organicPct" type="number" value="0" step="1" min="0" max="100"></div></div>
+  </div>
+
+  <div class="mdiv"></div>
+  <div class="sec-hdr">02b · Risk factors</div>
+  <div class="ig2">
+    <div class="ig"><label>Refund rate (%)</label><div class="pf"><span class="sym">%</span><input id="refundRate" type="number" value="3" step="0.5" min="0" max="30"></div></div>
+    <div class="ig"><label>Failed delivery (%)</label><div class="pf"><span class="sym">%</span><input id="failRate" type="number" value="2" step="0.5" min="0" max="20"></div></div>
+  </div>
+
+  <div class="mdiv"></div>
+  <div class="sec-hdr" style="cursor:pointer" onclick="toggleFixed()">
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:3px;height:3px;border-radius:50%;background:currentColor"></span>03 · Fixed costs</span>
+    <span style="display:flex;align-items:center;gap:5px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--purple)" id="fixedTotalBadge">₪4,000</span>
+      <span id="fixedArrow" style="font-size:9px;color:var(--tx3);transition:transform .2s">▼</span>
+    </span>
+  </div>
+  <div id="fixedSimple">
+    <div class="ig"><label>Monthly fixed costs (₪)</label><div class="pf"><span class="sym">₪</span><input id="fixedCosts" type="number" value="4000" step="500" oninput="syncFixed()"></div></div>
+  </div>
+  <div id="fixedExpanded" style="display:none">
+    <div style="background:var(--s3);border:1px solid var(--br);border-radius:var(--rl);padding:9px;margin-bottom:7px">
+      <div id="fixedItems"></div>
+      <button onclick="addFixedItem()" style="width:100%;margin-top:5px;padding:5px;font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--purple);background:var(--purple2);border:1px dashed var(--purple);border-radius:var(--r);cursor:pointer;letter-spacing:.04em">+ add item</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 9px;background:var(--s2);border:1px solid var(--br2);border-radius:var(--r);margin-bottom:6px">
+      <span style="font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;letter-spacing:.05em">TOTAL / MONTH</span>
+      <span style="font-size:13px;font-weight:500;font-family:'IBM Plex Mono',monospace;color:var(--purple)" id="fixedExpandedTotal">₪0</span>
+    </div>
+    <input type="hidden" id="fixedCostsHidden" value="4000">
+  </div>
+  <div class="ig"><label>Orders per month</label><input id="ordersPerMonth" type="number" value="200" step="10"></div>
+
+  <div class="mdiv"></div>
+  <div class="sec-hdr">04 · Order mix</div>
+  <div class="ig2">
+    <div class="ig"><label>% buying 1 box</label><div class="pf"><span class="sym">%</span><input id="mix1" type="number" value="60" min="0" max="100"></div></div>
+    <div class="ig"><label>% buying 2 boxes</label><div class="pf"><span class="sym">%</span><input id="mix2" type="number" value="30" min="0" max="100"></div></div>
+  </div>
+  <div class="ig">
+    <label>% buying 3+ boxes</label><div class="pf"><span class="sym">%</span><input id="mix3" type="number" value="10" min="0" max="100"></div>
+  </div>
+
+  <div class="mdiv"></div>
+  <div class="sec-hdr">04b · Bundle pricing</div>
+  <div class="ig2">
+    <div class="ig"><label>1-box discount (%)</label><div class="pf"><span class="sym">%</span><input id="disc1" type="number" value="0" min="0" max="50"></div></div>
+    <div class="ig"><label>2-box discount (%)</label><div class="pf"><span class="sym">%</span><input id="disc2" type="number" value="8" min="0" max="50"></div></div>
+  </div>
+  <div class="ig"><label>3-box discount (%)</label><div class="pf"><span class="sym">%</span><input id="disc3" type="number" value="12" min="0" max="50"></div></div>
+
+  <div class="mdiv"></div>
+  <div class="sec-hdr">05 · Free shipping</div>
+  <div class="ig"><label>Free ship threshold (₪)</label><div class="pf"><span class="sym">₪</span><input id="freeShipThreshold" type="number" value="200" step="10" min="0"></div></div>
+  <div id="freeShipImpact" style="font-size:9px;font-family:'IBM Plex Mono',monospace;line-height:1.5;margin-bottom:6px"></div>
+
+  <div class="mdiv"></div>
+  <div class="sec-hdr">06 · Cash & inventory</div>
+  <div class="ig"><label>Starting cash balance (₪)</label><div class="pf"><span class="sym">₪</span><input id="cashBalance" type="number" value="50000" step="1000"></div></div>
+  <div class="ig"><label>Cost per unit (₪)</label><div class="pf"><span class="sym">₪</span><input id="unitCost" type="number" value="1.47" step="0.1"></div></div>
+  <div class="ig"><label>Inventory days</label></div>
+  <div class="toggle-row">
+    <button class="tog" onclick="setInvDays(30,this)">30d</button>
+    <button class="tog on" onclick="setInvDays(60,this)">60d</button>
+    <button class="tog" onclick="setInvDays(90,this)">90d</button>
+  </div>
+  <input type="hidden" id="invDays" value="60">
+
+  <div class="mdiv"></div>
+  <div class="sec-hdr">07 · 12-month growth</div>
+  <div class="info-note">Month 1 uses "Orders per month" as baseline</div>
+  <div class="ig2">
+    <div class="ig"><label>Growth / mo (%)</label><div class="pf"><span class="sym">%</span><input id="growthRate" type="number" value="15" step="1"></div></div>
+    <div class="ig"><label>CAC improve (%)</label><div class="pf"><span class="sym">%</span><input id="cacImprove" type="number" value="2" step="0.5"></div></div>
+  </div>
+  <div class="ig"><label>AOV improve / mo (%)</label><div class="pf"><span class="sym">%</span><input id="aovImprove" type="number" value="1.5" step="0.5"></div></div>
+
+</div><!-- /sidebar -->
+
+<!-- ═══ MAIN DASHBOARD ═══ -->
+<div class="main">
+
+  <!-- ① UNIT ECONOMICS -->
+  <div class="dash-sec"><span class="num">1</span>Unit Economics <span class="badge" id="b-ue">—</span></div>
+  <div class="g2">
+    <div>
+      <div class="tbl-wrap"><table class="dt" id="prodTbl"></table></div>
+    </div>
+    <div>
+      <div class="wf-wrap" id="wfBars"></div>
+    </div>
+  </div>
+  <div class="mets5" id="ueMets"></div>
+
+  <!-- ① PROFITABILITY BREAKDOWN -->
+  <div class="dash-sec"><span class="num" style="background:rgba(155,124,255,.15);border-color:var(--purple);color:var(--purple)">↓</span>Profitability Breakdown</div>
+  <div id="profBreakdown"></div>
+
+  <!-- ① ORDER MIX HEALTH -->
+  <div class="dash-sec"><span class="num" style="background:rgba(155,124,255,.15);border-color:var(--purple);color:var(--purple)">✦</span>Order Mix Health <span class="badge" id="b-omh">—</span></div>
+  <div class="g2" id="orderMixHealth"></div>
+
+  <!-- ① BUNDLE PRICING TABLE -->
+  <div class="dash-sec"><span class="num">↓</span>Bundle Pricing <span style="font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;font-weight:400">per order type</span></div>
+  <div class="tbl-wrap" id="bundleTable"></div>
+
+  <!-- ② GROWTH DRIVERS -->
+  <div class="dash-sec"><span class="num">2</span>Growth Drivers <span class="badge" id="b-gd">—</span></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px" id="gdMets"></div>
+  <div id="trafficInsight" style="margin-bottom:10px"></div>
+  <div class="g2">
+    <div class="chart-card">
+      <div class="chart-legend">
+        <span><span class="cl" style="background:var(--green)"></span>Net profit ₪</span>
+        <span><span class="cl" style="background:var(--blue);height:2px;margin-top:3px;border-radius:0"></span>Revenue ₪</span>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="chart12"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-legend">
+        <span><span class="cl" style="background:var(--red);border-top:2px dashed var(--red)"></span>CAC ₪</span>
+        <span><span class="cl" style="background:var(--green)"></span>Contrib/order ₪</span>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="chartCAC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ③ 12-MONTH SIMULATION -->
+  <div class="dash-sec"><span class="num">3</span>12-Month Simulation <span class="badge" id="b-sim">—</span></div>
+  <div class="mets4" id="simMets"></div>
+  <div class="mo-scroll"><table class="mo-tbl" id="moTbl"></table></div>
+
+  <!-- ④ CASH FLOW & INVENTORY -->
+  <div class="dash-sec"><span class="num">4</span>Cash Flow & Inventory <span class="badge" id="b-cf">—</span></div>
+  <div class="g2">
+    <div>
+      <div class="mets2" id="cfMets"></div>
+      <div class="cf-card" id="cfBreakdown"></div>
+    </div>
+    <div class="alerts" id="cfAlerts"></div>
+  </div>
+
+  <!-- ⑤ RISK FACTORS -->
+  <div class="dash-sec"><span class="num">5</span>Risk Factors — impact on profitability</div>
+  <div class="risk-row" id="riskRow"></div>
+  <div class="alerts" id="riskAlerts"></div>
+
+  <!-- ⑥ SCENARIO SIMULATION -->
+  <div class="dash-sec"><span class="num">6</span>Scenario Comparison <span id="scnLabel" style="font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;text-transform:none;font-weight:400">Base case active</span></div>
+  <div class="mets4" id="scnMets"></div>
+  <div class="alerts" id="scnAlerts"></div>
+
+</div><!-- /main -->
+
+<!-- ═══ AGENT ═══ -->
+<div class="agent">
+  <div class="agent-hdr">
+    <div class="av">S</div>
+    <div><div class="an">Strategy Agent</div><div class="as" id="cstat">● Live — watching all metrics</div></div>
+  </div>
+  <div class="msgs" id="chatMsgs"></div>
+  <div class="chips">
+    <div class="chip" onclick="ask('Are we profitable? Give me a 3-line verdict.')">Are we profitable?</div>
+    <div class="chip" onclick="ask('Are we cash safe based on current runway?')">Cash safe?</div>
+    <div class="chip" onclick="ask('What single variable most impacts profitability?')">Top lever</div>
+    <div class="chip" onclick="ask('What happens in worst case scenario?')">Worst case</div>
+    <div class="chip" onclick="ask('How do I reach profitability by month 6?')">Hit M6 profit</div>
+    <div class="chip" onclick="ask('Analyze risk factors and their impact')">Risk analysis</div>
+  </div>
+  <div class="inp-area">
+    <div class="inp-row">
+      <textarea id="ainput" placeholder="Ask anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+      <button class="sbtn" id="sbtn" onclick="sendMsg()">Send</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// ─── Helpers ────────────────────────────────────────────────────────────────
+const gv=id=>parseFloat(document.getElementById(id)?.value)||0;
+const f=(v,d=2)=>parseFloat(v).toFixed(d);
+const fp=v=>f(v,1)+'%';
+const fn=v=>'₪'+parseFloat(v).toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fns=v=>(v<0?'-':'')+'₪'+Math.abs(parseFloat(v)).toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});
+const cc=v=>v>0?'good':v>-500?'warn':'bad';
+const hcls=v=>v>0?'g':v<0?'r':'a';
+let S={}, chart12Inst=null, chartCACInst=null, chatHistory=[];
+
+// ─── Scenario ────────────────────────────────────────────────────────────────
+let currentScenario='base';
+let baseValues={};
+
+function setScenario(sc,btn){
+  currentScenario=sc;
+  document.querySelectorAll('.scn-pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  if(sc==='base'){
+    // Restore base values
+    Object.keys(baseValues).forEach(k=>{
+      const el=document.getElementById(k);
+      if(el) el.value=baseValues[k];
+    });
+  } else {
+    // Save base first
+    ['cac','refundRate','failRate','growthRate'].forEach(k=>{
+      const el=document.getElementById(k);
+      if(el) baseValues[k]=el.value;
+    });
+    const baseCac=parseFloat(baseValues['cac']||gv('cac'));
+    if(sc==='worst'){
+      document.getElementById('cac').value=(baseCac*1.3).toFixed(0);
+      document.getElementById('refundRate').value=Math.min(30,(gv('refundRate')+5)).toFixed(1);
+      document.getElementById('failRate').value=Math.min(20,(gv('failRate')+3)).toFixed(1);
+      document.getElementById('growthRate').value=Math.max(0,(gv('growthRate')*0.8)).toFixed(1);
+    } else if(sc==='best'){
+      document.getElementById('cac').value=(baseCac*0.8).toFixed(0);
+      document.getElementById('refundRate').value=Math.max(0,(gv('refundRate')-2)).toFixed(1);
+      document.getElementById('growthRate').value=(gv('growthRate')*1.2).toFixed(1);
+    }
+  }
+  document.getElementById('scnLabel').textContent=sc==='base'?'Base case active':sc==='worst'?'⚠ Worst case active':'✦ Optimistic case active';
+  calc();
+}
+
+// ─── Inventory days toggle ───────────────────────────────────────────────────
+function setInvDays(d,btn){
+  document.querySelectorAll('.tog').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('invDays').value=d;
+  calc();
+}
+
+// ─── Fixed costs ─────────────────────────────────────────────────────────────
+const DEFAULT_FIXED_ITEMS=[
+  {name:'Rent / storage',amount:0},{name:'Accountant',amount:1200},
+  {name:'Platform & SaaS',amount:800},{name:'Salaries',amount:0},{name:'Misc / other',amount:2000}
+];
+let fixedItems=[...DEFAULT_FIXED_ITEMS], fixedExpanded=false;
+
+function toggleFixed(){
+  fixedExpanded=!fixedExpanded;
+  document.getElementById('fixedSimple').style.display=fixedExpanded?'none':'block';
+  document.getElementById('fixedExpanded').style.display=fixedExpanded?'block':'none';
+  document.getElementById('fixedArrow').style.transform=fixedExpanded?'rotate(180deg)':'';
+  if(fixedExpanded) renderFixedItems();
+}
+function renderFixedItems(){
+  document.getElementById('fixedItems').innerHTML=fixedItems.map((it,i)=>`
+    <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">
+      <input type="text" value="${it.name}" oninput="fixedItems[${i}].name=this.value"
+        style="flex:1;font-size:10px;font-family:'IBM Plex Mono',monospace;padding:5px 7px;border:1px solid var(--br);border-radius:var(--r);background:var(--s2);color:var(--tx)">
+      <div style="position:relative;width:80px;flex-shrink:0">
+        <span style="position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;pointer-events:none">₪</span>
+        <input type="number" value="${it.amount}" step="100" min="0" oninput="fixedItems[${i}].amount=parseFloat(this.value)||0;updateFixedTotal()"
+          style="width:100%;font-size:10px;font-family:'IBM Plex Mono',monospace;padding:5px 6px 5px 17px;border:1px solid var(--br);border-radius:var(--r);background:var(--s2);color:var(--tx)">
+      </div>
+      <button onclick="removeFixedItem(${i})" style="width:20px;height:20px;border-radius:50%;border:1px solid var(--br2);background:transparent;color:var(--tx3);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">&times;</button>
+    </div>`).join('');
+  updateFixedTotal();
+}
+function addFixedItem(){fixedItems.push({name:'New item',amount:0});renderFixedItems();}
+function removeFixedItem(i){fixedItems.splice(i,1);renderFixedItems();}
+function updateFixedTotal(){
+  const total=fixedItems.reduce((s,it)=>s+it.amount,0);
+  const h=document.getElementById('fixedCostsHidden');
+  if(h) h.value=total;
+  const b=document.getElementById('fixedTotalBadge');
+  if(b) b.textContent='₪'+total.toLocaleString('he-IL');
+  const et=document.getElementById('fixedExpandedTotal');
+  if(et) et.textContent='₪'+total.toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:0});
+  calc();
+}
+function syncFixed(){
+  const val=parseFloat(document.querySelector('#fixedSimple input').value)||0;
+  document.getElementById('fixedTotalBadge').textContent='₪'+val.toLocaleString('he-IL');
+}
+
+// ─── Core calculation ────────────────────────────────────────────────────────
+function calc(){
+  // — Product —
+  const sticks=gv('sticks'),priceVat=gv('priceVat'),vatR=gv('vatRate'),cogs=gv('cogs');
+  const priceNet=priceVat/(1+vatR/100);
+  const grossP=priceNet-cogs;
+  const grossM=(grossP/priceNet)*100;
+  const pps=priceNet/sticks, cps=cogs/sticks;
+
+  // — Order —
+  const fulfill=gv('fulfill'),shipCost=gv('shipCost'),shipRev=gv('shipRev'),
+        payPct=gv('payFee')/100, cac=gv('cac');
+  // ── Order structure (3 tiers, no double counting) ──────────────────
+  // Total orders = First orders + Repeat orders
+  //   First orders = Paid first + Organic first
+  //   Repeat orders = always ₪0 CAC (already acquired)
+  // Growth applies to TOTAL orders — repeat is a % split, not additive
+  const cvr=Math.max(0.001,gv('cvr')/100);
+  const repeatRate=gv('repeatRate')/100;            // % of total orders from returning customers
+  const organicPct=Math.min(1,gv('organicPct')/100); // % of FIRST orders acquired organically
+  const paidPct=1-organicPct;                        // % of FIRST orders via paid channels
+  const firstTimePct=1-repeatRate;                   // % of total orders that are new customers
+  // Derived order counts (of total monthly orders)
+  const paidFirstPct=firstTimePct*paidPct;           // paid new customers ÷ total
+  const organicFirstPct=firstTimePct*organicPct;     // organic new customers ÷ total
+  // Blended CAC = only paid first orders pay CAC
+  // blendedCac as % of total orders: paidFirstPct × cac
+  const blendedCac=paidFirstPct>0?cac*paidPct:0;   // per first-order, CAC discounted by organic%
+  // Traffic metrics
+  const trafficNeeded=Math.round(gv('ordersPerMonth')/cvr);
+  const refundRate=gv('refundRate')/100;
+  const failRate=gv('failRate')/100;
+
+  // Free shipping threshold
+  const fst=gv('freeShipThreshold')||200;
+  // Per-box discounts (independent per order type)
+  const disc1=gv('disc1')/100, disc2=gv('disc2')/100, disc3=gv('disc3')/100;
+  // Discounted product revenue per order type
+  const prodNet1=priceNet*1*(1-disc1);
+  const prodNet2=priceNet*2*(1-disc2);
+  const prodNet3=priceNet*3*(1-disc3);
+  // Free shipping: check if discounted order value >= threshold
+  const q1=prodNet1>=fst, q2=prodNet2>=fst, q3=prodNet3>=fst;
+  const es1=q1?0:shipRev, es2=q2?0:shipRev, es3=q3?0:shipRev;
+  // Total order revenue (discounted product + shipping charged)
+  const rev1=prodNet1+es1, rev2=prodNet2+es2, rev3=prodNet3+es3;
+  const vc1=(cogs*1)+fulfill+shipCost+(rev1*payPct);
+  const vc2=(cogs*2)+fulfill+shipCost+(rev2*payPct);
+  const vc3=(cogs*3)+fulfill+shipCost+(rev3*payPct);
+  const cr1=rev1-vc1, cr2=rev2-vc2, cr3=rev3-vc3;
+  const cm1=cr1-cac, cm2=cr2-cac, cm3=cr3-cac;
+
+  // Blended (weighted by mix)
+  const m1=gv('mix1')/100, m2=gv('mix2')/100, m3=gv('mix3')/100;
+  const tot=m1+m2+m3||1;
+  const nm1=m1/tot, nm2=m2/tot, nm3=m3/tot;
+  const aov=nm1*rev1+nm2*rev2+nm3*rev3;
+  // Blended product-only revenue (no shipping) — used as CM% denominator
+  const blendProdRev=nm1*prodNet1+nm2*prodNet2+nm3*prodNet3;
+  const blendContrib=nm1*cr1+nm2*cr2+nm3*cr3;
+  // CM% = Contribution / Product Revenue (excludes shipping from denominator — consistent with gross margin)
+  const blendCmPct=(blendContrib/Math.max(blendProdRev,1))*100;
+
+  // Risk adjustments — consistent bases:
+  // Refund: customer returns product only → cost = blendProdRev × refundRate
+  // Failed delivery: re-ship cost → shipCost × failRate
+  const refundCostPerOrder=blendProdRev*refundRate;
+  const failCostPerOrder=shipCost*failRate;
+  const riskCostPerOrder=refundCostPerOrder+failCostPerOrder;
+  const blendContribAdj=blendContrib-riskCostPerOrder;
+  const blendCmAfterCAC=blendContribAdj-cac;
+  // CM% = risk-adjusted contribution / product revenue (consistent denominator throughout)
+  const blendCmPctAdj=(blendContribAdj/Math.max(blendProdRev,1))*100;
+
+  // First-order vs repeat-order profit split
+  // First orders pay blendedCac; repeat orders pay ₪0 CAC
+  const firstOrderProfit=blendContribAdj-blendedCac;       // blended CAC (organic discount applied)
+  const repeatOrderProfit=blendContribAdj;                  // no CAC on repeats
+  // Weighted avg profit per order (mix of first + repeat)
+  const firstPct=1-repeatRate;
+  const weightedProfitPerOrder=firstPct*firstOrderProfit+repeatRate*repeatOrderProfit;
+  // CAC payback uses blendedCac
+  const cacPaybackDaysAdj=blendContribAdj>0?Math.ceil((blendedCac/blendContribAdj)*30):999;
+
+  // Fixed & monthly
+  const fixedEl=document.getElementById('fixedCostsHidden');
+  const fixed=fixedExpanded?(fixedEl?parseFloat(fixedEl.value)||0:fixedItems.reduce((s,it)=>s+it.amount,0)):gv('fixedCosts');
+  const opm=gv('ordersPerMonth');
+  // Marketing cost: only paid first-time orders pay CAC
+  //   Repeat orders: ₪0 CAC (already acquired)
+  //   Organic first: ₪0 CAC (acquired for free)
+  //   Paid first:    full CAC
+  // monthMktg = total orders × paidFirstPct × cac
+  //           = opm × (1-repeatRate) × paidPct × cac
+  //           = opm × firstTimePct × blendedCac  (algebraically equivalent)
+  const monthMktg=opm*firstTimePct*blendedCac;
+  const monthContrib=opm*blendContribAdj;
+  const netProfit=monthContrib-monthMktg-fixed;
+  const beOrders=(blendContribAdj-firstTimePct*blendedCac)>0?fixed/(blendContribAdj-firstTimePct*blendedCac):null;
+
+  // LTV & payback
+  const ltvOrders=1+(nm2*2+nm3*3)*repeatRate;
+  const ltv=blendContribAdj*ltvOrders;
+  const ltvcac=blendedCac>0?ltv/blendedCac:0;
+  const cacPaybackDays=cacPaybackDaysAdj;  // uses blendedCac
+
+  // Cash & inventory
+  const cashBal=gv('cashBalance'), unitCost=gv('unitCost'), invDays=gv('invDays');
+  const unitsPerMonth=opm*(nm1*1+nm2*2+nm3*3)*sticks;
+  const invRequired=unitCost*unitsPerMonth*(invDays/30);
+  const monthlyRevCash=opm*aov;
+  const monthlyCOGSOut=opm*(nm1*cogs+nm2*cogs*2+nm3*cogs*3);
+  const monthlyOpEx=fixed+monthMktg+opm*(fulfill+shipCost);
+  const netCashFlow=monthlyRevCash-monthlyCOGSOut-monthlyOpEx;
+  const cashRunway=netCashFlow<0?Math.floor(cashBal/Math.abs(netCashFlow)):99;
+
+  // 12-month simulation
+  const gr=gv('growthRate')/100, ci=gv('cacImprove')/100, ai=gv('aovImprove')/100;
+  let months=[],revenues=[],profits=[],beMonth=null,cumProfit=0;
+  for(let i=0;i<12;i++){
+    const orders=Math.round(opm*Math.pow(1+gr,i));
+    const adjCAC=blendedCac*Math.pow(1-ci,i);  // blended CAC (organic-adjusted) improves over time
+    const adjAOV=aov*Math.pow(1+ai,i);
+    const adjContrib=blendContribAdj*Math.pow(1+ai,i);
+    const rev=orders*adjAOV;
+    const contrib=orders*adjContrib;
+    const mktg=orders*(1-repeatRate)*adjCAC;    // only first-time orders pay CAC
+    const net=contrib-mktg-fixed;
+    cumProfit+=net;
+    if(net>0&&!beMonth)beMonth=i+1;
+    const moAOV=rev/Math.max(orders,1);
+    const moCAC=mktg/Math.max(orders,1);
+    const moROAS=rev/Math.max(mktg,1);
+    const moContrib=contrib/Math.max(orders,1);
+    const moCMPct=(contrib/Math.max(rev,1))*100;
+    const moGrowth=i===0?0:((orders/Math.round(opm*Math.pow(1+gr,i-1)))-1)*100;
+    months.push({i,orders,rev,contrib,mktg,net,cumProfit,moAOV,moCAC,moROAS,moContrib,moCMPct,moGrowth,adjCAC});
+    revenues.push(+rev.toFixed(0));
+    profits.push(+net.toFixed(0));
+  }
+  const rev12=months.reduce((a,m)=>a+m.rev,0);
+  const profit12=months.reduce((a,m)=>a+m.net,0);
+
+  S={sticks,priceVat,priceNet,vatR,cogs,grossP,grossM,pps,cps,
+    fulfill,shipCost,shipRev,payPct,aov,cac,blendedCac,
+    cvr,trafficNeeded,repeatRate,firstTimePct,firstPct,paidFirstPct,organicFirstPct,paidPct,organicPct,
+    weightedProfitPerOrder,firstOrderProfit,repeatOrderProfit,
+    refundRate,failRate,
+    riskCostPerOrder,refundCostPerOrder,failCostPerOrder,
+    rev1,rev2,rev3,vc1,vc2,vc3,cr1,cr2,cr3,cm1,cm2,cm3,m1,m2,m3,nm1,nm2,nm3,
+    blendProdRev,blendContrib,blendContribAdj,blendCmPct,blendCmPctAdj,blendCmAfterCAC,
+    firstOrderProfit,
+    fixed,opm,monthContrib,monthMktg,netProfit,beOrders,
+    ltv,ltvcac,cacPaybackDays,ltvOrders,
+    cashBal,unitCost,invDays,invRequired,monthlyRevCash,monthlyCOGSOut,monthlyOpEx,netCashFlow,cashRunway,
+    disc1,disc2,disc3,prodNet1,prodNet2,prodNet3,es1,es2,es3,q1,q2,q3,fst,
+    months,revenues,profits,beMonth,rev12,profit12,
+    currentScenario};
+
+  renderAll();
+}
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+function renderAll(){
+  const s=S;
+
+  // ── Free ship hint ──
+  // Update per-stick read-only displays
+  const ppsEl=document.getElementById('pricePerStick');
+  const cpsEl=document.getElementById('cogsPerStick');
+  if(ppsEl) ppsEl.textContent='₪'+s.pps.toFixed(2);
+  if(cpsEl) cpsEl.textContent='₪'+s.cps.toFixed(2);
+
+  const fsEl=document.getElementById('freeShipImpact');
+  if(fsEl){
+    const shipped=[!s.q1&&'1-box',!s.q2&&'2-box',!s.q3&&'3-box'].filter(Boolean);
+    const free=[s.q1&&'1-box',s.q2&&'2-box',s.q3&&'3-box'].filter(Boolean);
+    const txt=free.length?`✓ Free: ${free.join(', ')}${shipped.length?' · Charged: '+shipped.join(', '):''}`:
+      `Shipping charged on all (threshold ₪${s.fst})`;
+    fsEl.innerHTML=`<span style="color:${free.length?'var(--green)':'var(--tx3)'};font-size:9px">${txt}</span>`;
+  }
+
+  // ── Header KPIs (6 max) ──
+  const setH=(id,val,cls)=>{const el=document.getElementById(id);if(el){el.textContent=val;el.className='hv '+cls}};
+  setH('hPO',fns(s.weightedProfitPerOrder),s.weightedProfitPerOrder>=20?'g':s.weightedProfitPerOrder>=15?'a':'r');
+  setH('hNP',fns(s.netProfit),hcls(s.netProfit));
+  setH('hLC',f(s.ltvcac,2)+'x',s.ltvcac>=3?'g':s.ltvcac>=1.5?'a':'r');
+  setH('hCPB',s.cacPaybackDays>=999?'∞':s.cacPaybackDays+'d',s.cacPaybackDays<=30?'g':s.cacPaybackDays<=60?'a':'r');
+  setH('hCR',s.cashRunway>=99?'∞':s.cashRunway+'mo',s.cashRunway>=6?'g':s.cashRunway>=3?'a':'r');
+  setH('hBE',s.beOrders?Math.ceil(s.beOrders)+' ord':'∞',s.beOrders&&s.opm>=s.beOrders?'g':'r');
+
+  // ── ① Unit Economics ──
+  const bue=document.getElementById('b-ue');
+  if(bue){bue.textContent=fp(s.blendCmPctAdj);bue.className='badge '+(s.blendCmPctAdj>50?'g':s.blendCmPctAdj>30?'a':'r');}
+  document.getElementById('prodTbl').innerHTML=`
+    <thead><tr><th>—</th><th>Per box</th><th>Per stick</th><th>Margin</th></tr></thead>
+    <tbody>
+    <tr><td>Revenue (net)</td><td>${fn(s.priceNet)}</td><td>${fn(s.pps)}</td><td>—</td></tr>
+    <tr><td>COGS</td><td class="r">${fn(s.cogs)}</td><td class="r">${fn(s.cps)}</td><td>—</td></tr>
+    <tr><td class="bold">Gross margin <span style="font-size:9px;color:var(--tx3);font-weight:400">(Target: 65–75%)</span></td><td class="${s.grossP>0?'g bold':'r bold'}">${fns(s.grossP)}</td><td class="${(s.pps-s.cps)>0?'g bold':'r bold'}">${fns(s.pps-s.cps)}</td><td class="${s.grossP>0?'g bold':'r bold'}" title="(Price - COGS) / Price">${fp(s.grossM)}</td></tr>
+    </tbody>`;
+  const maxB=Math.max(s.rev1,1);
+  document.getElementById('wfBars').innerHTML=['Product rev',s.priceNet,'#0dd68f','Ship rev',s.es1,'#00d4c8','COGS',s.cogs,'#ff4466','Fulfillment',s.fulfill,'#f5a623','Net ship',Math.max(0,s.shipCost-s.es1),'#e07030','Pay fee',s.rev1*s.payPct,'#7060aa','Contribution',s.cr1,s.cr1>=0?'#0dd68f':'#ff4466'].reduce((h,_,i,a)=>{
+    if(i%3!==0)return h;
+    const[l,v,col]=[a[i],a[i+1],a[i+2]];
+    return h+`<div class="wf-row"><div class="wf-lbl">${l}</div><div class="wf-trk"><div class="wf-fil" style="width:${Math.max(0,Math.min(100,v/maxB*100)).toFixed(1)}%;background:${col}"></div></div><div class="wf-val">${fn(v)}</div></div>`;
+  },'');
+  document.getElementById('ueMets').innerHTML=`
+    <div class="met ${s.weightedProfitPerOrder>=20?'good':s.weightedProfitPerOrder>=15?'warn':'bad'}"><div class="ml">Profit / order (weighted)</div><div class="mv">${fns(s.weightedProfitPerOrder)}</div><div class="ms">1st: ${fns(s.firstOrderProfit)} · repeat: ${fns(s.repeatOrderProfit)}</div></div>
+    <div class="met ${s.cm1>0?'good':'bad'}"><div class="ml">1-box profit / order</div><div class="mv">${fns(s.cm1)}</div><div class="ms">Single box after CAC (₪${f(s.cac,0)})</div></div>
+    <div class="met ${s.blendCmPctAdj>50?'good':s.blendCmPctAdj>30?'warn':'bad'}"><div class="ml">Blended CM% <span style="font-size:9px;opacity:.6">(after returns)</span></div><div class="mv">${fp(s.blendCmPctAdj)}</div><div class="ms">Pre-risk: ${fp(s.blendCmPct)}</div></div>
+    <div class="met ${s.cacPaybackDays<=30?'good':s.cacPaybackDays<=60?'warn':'bad'}"><div class="ml">CAC Payback</div><div class="mv">${s.cacPaybackDays>=999?'∞':s.cacPaybackDays+'d'}</div><div class="ms">CAC ₪${f(s.cac,0)} ÷ CM/order</div></div>
+    <div class="met"><div class="ml">Blended AOV</div><div class="mv">${fn(s.aov)}</div><div class="ms">repeat rate ${fp(s.repeatRate*100)}</div></div>`;
+
+  // ── ② Growth Drivers ──
+  const bgd=document.getElementById('b-gd');
+  if(bgd){bgd.textContent=s.netProfit>0?'Profitable':'Loss-making';bgd.className='badge '+(s.netProfit>0?'g':'r');}
+
+  // Traffic & CVR
+  const beTrafficNeeded=s.beOrders?Math.round(s.beOrders/s.cvr):null;
+  const curTraffic=Math.round(s.opm/s.cvr);
+  const cvrPct=s.cvr*100;
+
+  document.getElementById('gdMets').innerHTML=`
+    <div class="met"><div class="ml">Blended AOV</div><div class="mv">${fn(s.aov)}</div><div class="ms">weighted order value</div></div>
+    <div class="met ${s.blendedCac<s.blendContrib?'good':'bad'}">
+      <div class="ml">CAC</div>
+      <div class="mv">${fn(s.blendedCac)}</div>
+      <div class="ms">
+        ${s.organicPct>0?`Blended (${fp(s.organicPct*100)} organic) · Paid: ${fn(s.cac)}`:fn(s.cac)+' paid · 0% organic'}
+      </div>
+    </div>
+    <div class="met ${s.blendCmPctAdj>40?'good':s.blendCmPctAdj>25?'warn':'bad'}">
+      <div class="ml">Contribution margin</div>
+      <div class="mv">${fp(s.blendCmPctAdj)}</div>
+      <div class="ms">Pre-risk: ${fp(s.blendCmPct)}</div>
+    </div>
+    <div class="met ${s.weightedProfitPerOrder>=20?'good':s.weightedProfitPerOrder>=15?'warn':'bad'}">
+      <div class="ml">Profit / order <span style="font-size:9px;opacity:.6">(weighted)</span></div>
+      <div class="mv">${fns(s.weightedProfitPerOrder)}</div>
+      <div class="ms">1st: ${fns(s.firstOrderProfit)} · repeat: ${fns(s.repeatOrderProfit)}</div>
+    </div>
+    <div class="met ${cvrPct>=3?'good':cvrPct>=1.5?'warn':'bad'}">
+      <div class="ml">Conversion rate</div>
+      <div class="mv">${fp(cvrPct)}</div>
+      <div class="ms">${curTraffic.toLocaleString()} visitors/mo needed</div>
+    </div>
+    <div class="met ${s.netProfit>0?'good':s.netProfit>-5000?'warn':'bad'}">
+      <div class="ml">Monthly net profit</div>
+      <div class="mv">${fns(s.netProfit)}</div>
+      <div class="ms">${s.opm} orders/mo</div>
+    </div>`;
+
+  // Traffic insight — simple reality check
+  const trafficInsightEl=document.getElementById('trafficInsight');
+  if(trafficInsightEl){
+    // Order split counts
+    // Order splits — these are dimensions of the SAME pool, not additive
+    const firstOrders=Math.round(s.opm*s.firstTimePct);  // new customers this month
+    const repeatOrders=s.opm-firstOrders;                 // returning customers
+    const paidOrders=Math.round(firstOrders*s.paidPct);  // of first-time, how many via paid
+    const organicOrders=firstOrders-paidOrders;           // of first-time, how many organic
+
+    // Traffic gap
+    const trafficGap=beTrafficNeeded?beTrafficNeeded-curTraffic:null;
+    const gapClass=trafficGap===null?'bad':trafficGap<=0?'good':trafficGap<5000?'warn':'bad';
+    // Validation note: repeat orders are a split of total orders, NOT added on top of growth
+    const validationNote='Repeat orders ('+fp(s.repeatRate*100)+') are included within total growth — not added separately. No double counting.';
+    const gapText=trafficGap===null?'Break-even not achievable at current economics':
+      trafficGap<=0?`✓ Current traffic sufficient. ${Math.abs(trafficGap).toLocaleString()} visitors above break-even.`:
+      `Need ${trafficGap.toLocaleString()} more visitors/month to break even.`;
+
+    // Smart CVR insight
+    const cvrAtBE=beTrafficNeeded?fp((s.beOrders/curTraffic)*100):null;
+    let smartInsight='', smartClass='info';
+    if(!s.beOrders){smartInsight='Unit economics too weak — fix pricing or CAC before worrying about traffic.';smartClass='bad';}
+    else if(trafficGap>0&&cvrPct<2){smartInsight=`CVR ${fp(cvrPct)} is low. At 3% CVR you'd need only ${Math.round(s.beOrders/0.03).toLocaleString()} visitors vs ${beTrafficNeeded.toLocaleString()} now. Improving CVR is often faster than scaling traffic.`;smartClass='warn';}
+    else if(trafficGap<=0){smartInsight=`Traffic plan covers break-even. Each +1,000 visitors = +${Math.round(1000*s.cvr)} orders at current CVR.`;smartClass='good';}
+    else{smartInsight=`You need ${beTrafficNeeded.toLocaleString()} visitors/month to break even. Current plan: ${curTraffic.toLocaleString()}. Gap: ${trafficGap.toLocaleString()}.`;smartClass='warn';}
+
+    trafficInsightEl.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+        <div class="met"><div class="ml">Paid orders</div><div class="mv">${paidOrders}</div><div class="ms">${fp(s.paidPct*100)} of total</div></div>
+        <div class="met ${organicOrders>0?'good':''}"><div class="ml">Organic orders</div><div class="mv">${organicOrders}</div><div class="ms">${fp(s.organicPct*100)} of total</div></div>
+        <div class="met"><div class="ml">First orders</div><div class="mv">${firstOrders}</div><div class="ms">${fp(s.firstPct*100)} — pay CAC</div></div>
+        <div class="met good"><div class="ml">Repeat orders</div><div class="mv">${repeatOrders}</div><div class="ms">${fp(s.repeatRate*100)} — no CAC</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
+        <div class="met"><div class="ml">Current traffic (modeled)</div><div class="mv">${curTraffic.toLocaleString()}</div><div class="ms">${s.opm} orders at ${fp(cvrPct)} CVR</div></div>
+        <div class="met ${beTrafficNeeded?'warn':'bad'}"><div class="ml">Traffic to break even</div><div class="mv">${beTrafficNeeded?beTrafficNeeded.toLocaleString():'N/A'}</div><div class="ms">${beTrafficNeeded?Math.ceil(s.beOrders)+' orders needed':''}</div></div>
+        <div class="met ${gapClass}"><div class="ml">Gap</div><div class="mv">${trafficGap===null?'∞':trafficGap<=0?'✓ Covered':('+'+trafficGap.toLocaleString())}</div><div class="ms">${trafficGap!==null&&trafficGap>0?'visitors/mo':''}${trafficGap!==null&&trafficGap<=0?'above break-even':''}</div></div>
+      </div>
+      <div class="alert ${smartClass}">${smartInsight}</div>
+      <div style="font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;padding:5px 8px;background:var(--s3);border-radius:var(--r);margin-top:6px;border-left:2px solid var(--tx3)">✓ ${validationNote}</div>`;
+  }
+  renderCharts();
+
+  // ── ③ 12-Month Sim ──
+  const bsim=document.getElementById('b-sim');
+  if(bsim){bsim.textContent=s.beMonth?'Profitable M'+s.beMonth:'Year 2+';bsim.className='badge '+(s.beMonth&&s.beMonth<=6?'g':s.beMonth?'a':'r');}
+  document.getElementById('simMets').innerHTML=`
+    <div class="met"><div class="ml">12-mo revenue</div><div class="mv">${fn(s.rev12)}</div></div>
+    <div class="met ${cc(s.profit12)}"><div class="ml">12-mo net profit</div><div class="mv">${fns(s.profit12)}</div></div>
+    <div class="met ${s.beMonth?'good':'bad'}"><div class="ml">First profitable mo</div><div class="mv">${s.beMonth?'M'+s.beMonth:'Not yr 1'}</div></div>
+    <div class="met"><div class="ml">M12 orders</div><div class="mv">${s.months[11].orders}</div></div>`;
+  document.getElementById('moTbl').innerHTML=`
+    <thead><tr>
+      <th>Mo</th><th>Orders</th><th>MoM</th><th>Revenue</th><th>AOV</th><th>ROAS</th>
+      <th>Contribution</th><th>CM%</th><th>Marketing (CAC)</th><th>Net P/L</th><th>Cumulative</th>
+    </tr></thead>
+    <tbody>${s.months.map(m=>`
+    <tr class="${m.net>0?'brk':''}">
+      <td>M${m.i+1}</td><td>${m.orders}</td>
+      <td style="font-size:9px" class="${m.i===0?'':'pos'}">${m.i===0?'—':'+'+m.moGrowth.toFixed(0)+'%'}</td>
+      <td>${fn(m.rev)}</td>
+      <td style="color:var(--purple)">${fn(m.moAOV)}</td>
+      <td style="color:${m.moROAS>=2?'var(--green)':m.moROAS>=1?'var(--amber)':'var(--red)'}">${m.moROAS.toFixed(2)}x</td>
+      <td>${fn(m.contrib)}</td>
+      <td class="${m.moCMPct>=40?'pos':m.moCMPct>=25?'':'neg'}" style="font-size:9px">${m.moCMPct.toFixed(1)}%</td>
+      <td style="color:var(--blue);font-size:10px">${fn(m.mktg)} <span style="opacity:.55;font-size:9px">(CAC ₪${m.adjCAC.toFixed(0)})</span></td>
+      <td class="${m.net>0?'pos':'neg'}">${fns(m.net)}</td>
+      <td class="${m.cumProfit>0?'pos':'neg'}">${fns(m.cumProfit)}</td>
+    </tr>`).join('')}</tbody>`;
+
+  // ── ④ Cash Flow & Inventory ──
+  const bcf=document.getElementById('b-cf');
+  if(bcf){bcf.textContent=s.cashRunway>=99?'∞ runway':s.cashRunway+'mo runway';bcf.className='badge '+(s.cashRunway>=6||s.cashRunway>=99?'g':s.cashRunway>=3?'a':'r');}
+  document.getElementById('cfMets').innerHTML=`
+    <div class="met ${s.cashRunway>=6||s.cashRunway>=99?'good':s.cashRunway>=3?'warn':'bad'}"><div class="ml">Cash runway</div><div class="mv">${s.cashRunway>=99?'∞':s.cashRunway+'mo'}</div><div class="ms">at ₪${fn(s.cashBal)} balance</div></div>
+    <div class="met ${s.netCashFlow>0?'good':'bad'}"><div class="ml">Monthly cash flow</div><div class="mv">${fns(s.netCashFlow)}</div><div class="ms">net in/out</div></div>`;
+  document.getElementById('cfBreakdown').innerHTML=`
+    <div class="cf-row"><span class="cf-lbl">Monthly revenue</span><span class="cf-val pos">${fn(s.monthlyRevCash)}</span></div>
+    <div class="cf-row"><span class="cf-lbl">COGS outflow</span><span class="cf-val neg">-${fn(s.monthlyCOGSOut)}</span></div>
+    <div class="cf-row"><span class="cf-lbl">Fulfillment + shipping</span><span class="cf-val neg">-${fn(s.opm*(s.fulfill+s.shipCost))}</span></div>
+    <div class="cf-row"><span class="cf-lbl">Marketing</span><span class="cf-val neg">-${fn(s.monthMktg)}</span></div>
+    <div class="cf-row"><span class="cf-lbl">Fixed costs</span><span class="cf-val neg">-${fn(s.fixed)}</span></div>
+    <div class="cf-row"><span class="cf-lbl">Inventory capital needed (${s.invDays}d)</span><span class="cf-val ${s.invRequired>s.cashBal*0.5?'neg':''}">${fn(s.invRequired)}</span></div>
+    <div class="cf-row"><span class="cf-lbl">Net monthly cash flow</span><span class="cf-val ${s.netCashFlow>0?'pos':'neg'}">${fns(s.netCashFlow)}</span></div>`;
+  const cfAlerts=[];
+  if(s.cashRunway<3) cfAlerts.push({t:`Cash runway only ${s.cashRunway} months. Immediate action needed.`,c:'bad'});
+  else if(s.cashRunway<6) cfAlerts.push({t:`Cash runway ${s.cashRunway} months. Tight — monitor weekly.`,c:'warn'});
+  if(s.invRequired>s.cashBal*0.6) cfAlerts.push({t:`Inventory at ${s.invDays}d requires ₪${fn(s.invRequired)} — ${((s.invRequired/s.cashBal)*100).toFixed(0)}% of cash. Consider shorter inventory cycles.`,c:'warn'});
+  if(s.netCashFlow>0) cfAlerts.push({t:`Positive cash flow ₪${fn(s.netCashFlow)}/mo. Business is self-funding.`,c:'good'});
+  if(!cfAlerts.length) cfAlerts.push({t:'Cash position stable.',c:'good'});
+  document.getElementById('cfAlerts').innerHTML=cfAlerts.map(a=>`<div class="alert ${a.c}">${a.t}</div>`).join('');
+
+  // ── ⑤ Risk Factors ──
+  const riskImpact=s.riskCostPerOrder*s.opm;
+  document.getElementById('riskRow').innerHTML=`
+    <div class="risk-met"><span class="risk-lbl">Refund rate</span><span class="risk-val">${fp(s.refundRate*100)}</span></div>
+    <div class="risk-met"><span class="risk-lbl">Failed delivery</span><span class="risk-val">${fp(s.failRate*100)}</span></div>
+    <div class="risk-met" style="border-color:${riskImpact>500?'rgba(255,68,102,.3)':'var(--br)'}"><span class="risk-lbl">Monthly risk cost</span><span class="risk-val" style="color:${riskImpact>500?'var(--red)':'var(--amber)'}">${fn(riskImpact)}</span></div>`;
+  const rAlerts=[];
+  if(s.riskCostPerOrder>0) rAlerts.push({t:`Risk costs reduce CM by ₪${fn(s.riskCostPerOrder)}/order (${fp(s.riskCostPerOrder/s.aov*100)} of AOV). Monthly impact: -₪${fn(riskImpact)}.`,c:riskImpact>500?'bad':'warn'});
+  if(s.refundRate>0.08) rAlerts.push({t:`Refund rate ${fp(s.refundRate*100)} is high. Investigate product quality or expectation mismatch.`,c:'bad'});
+  document.getElementById('riskAlerts').innerHTML=rAlerts.map(a=>`<div class="alert ${a.c}">${a.t}</div>`).join('');
+
+  // ── ⑥ Scenario Comparison ──
+  const scLabel=document.getElementById('scnLabel');
+  const scnClass=s.currentScenario==='worst'?'bad':s.currentScenario==='best'?'good':'info';
+  const scnTexts={base:'Base case — your current inputs',worst:'⚠ Worst case — CAC +30%, refund +5%, growth -20%',best:'✦ Optimistic — CAC -20%, lower refunds, higher growth'};
+  document.getElementById('scnMets').innerHTML=`
+    <div class="met ${scnClass}"><div class="ml">Scenario</div><div class="mv" style="font-size:12px">${s.currentScenario.charAt(0).toUpperCase()+s.currentScenario.slice(1)}</div></div>
+    <div class="met ${cc(s.netProfit)}"><div class="ml">Monthly profit</div><div class="mv">${fns(s.netProfit)}</div></div>
+    <div class="met ${s.beMonth?'good':'bad'}"><div class="ml">Break-even month</div><div class="mv">${s.beMonth?'M'+s.beMonth:'Year 2+'}</div></div>
+    <div class="met ${s.ltvcac>=3?'good':s.ltvcac>=1.5?'warn':'bad'}"><div class="ml">LTV:CAC</div><div class="mv">${f(s.ltvcac,2)}x</div></div>`;
+  document.getElementById('scnAlerts').innerHTML=`<div class="alert ${scnClass}">${scnTexts[s.currentScenario]}</div>`;
+  renderProfBreakdown();
+  renderOrderMixHealth();
+  renderBundleTable();
+}
+
+function renderOrderMixHealth(){
+  const s=S;
+  const el=document.getElementById('orderMixHealth');
+  if(!el) return;
+
+  const p1=s.cm1, p2=s.cm2, p3=s.cm3;
+  const mix23=(s.m2+s.m3)||0.001;
+  const w2=s.m2/mix23, w3=s.m3/mix23;
+  const p2plus=w2*p2+w3*p3;
+  const cur2plus=(s.m2+s.m3)*100;
+
+  // Unit break-even
+  let unitBE=null,unitSafe=null;
+  if(p2plus>p1){
+    unitBE=Math.max(0,Math.min(100,(-p1/(p2plus-p1))*100));
+    unitSafe=Math.min(100,unitBE+10);
+  }
+
+  // Business break-even
+  const fixedPerOrder=s.opm>0?s.fixed/s.opm:Infinity;
+  let bizBE=null,bizSafe=null;
+  if((p2plus-p1)>0){
+    bizBE=Math.max(0,Math.min(110,((fixedPerOrder-p1)/(p2plus-p1))*100));
+    bizSafe=Math.min(110,bizBE+10);
+  }
+
+  const uSt=!unitBE?'bad':cur2plus>=unitSafe?'good':cur2plus>=unitBE-5?'warn':'bad';
+  const bSt=!bizBE?'bad':bizBE>100?'bad':cur2plus>=bizSafe?'good':cur2plus>=bizBE-5?'warn':'bad';
+
+  const uColor=uSt==='good'?'var(--green)':uSt==='warn'?'var(--amber)':'var(--red)';
+  const bColor=bSt==='good'?'var(--green)':bSt==='warn'?'var(--amber)':'var(--red)';
+
+  const uLabel=uSt==='good'?'✓ Healthy':uSt==='warn'?'⚠ At risk':'✗ Loss';
+  const bLabel=bSt==='good'?'✓ Healthy':bSt==='warn'?'⚠ At risk':'✗ Loss';
+
+  const layer=(title,color,status,label,cur,be,safe,beOk,note)=>`
+    <div class="met" style="border-color:${color}22;border-top:2px solid ${color}">
+      <div class="ml" style="display:flex;justify-content:space-between;align-items:center">
+        <span>${title}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 7px;border-radius:3px;background:${color}18;color:${color}">${label}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin:10px 0 8px">
+        <div style="text-align:center">
+          <div style="font-size:9px;color:var(--tx3);margin-bottom:3px">Current 2+</div>
+          <div style="font-size:16px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:${color}">${cur.toFixed(0)}%</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:9px;color:var(--tx3);margin-bottom:3px">Break-even</div>
+          <div style="font-size:16px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--amber)">${beOk?(be>100?'>100%':be.toFixed(0)+'%'):'N/A'}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:9px;color:var(--tx3);margin-bottom:3px">Safe (BE+10)</div>
+          <div style="font-size:16px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--green)">${beOk?(safe>100?'>100%':safe.toFixed(0)+'%'):'N/A'}</div>
+        </div>
+      </div>
+      ${beOk&&be<=100?`
+      <div style="position:relative;height:6px;background:var(--s3);border-radius:3px;margin-bottom:3px;overflow:visible">
+        <div style="position:absolute;top:0;left:0;width:${Math.min(100,cur).toFixed(1)}%;height:6px;background:${color};opacity:.4;border-radius:3px"></div>
+        <div style="position:absolute;top:0;left:${Math.min(99,cur).toFixed(1)}%;width:2px;height:6px;background:${color}"></div>
+        <div style="position:absolute;top:-3px;left:${Math.min(99,be).toFixed(1)}%;width:2px;height:12px;background:var(--amber);border-radius:1px"></div>
+        <div style="position:absolute;top:-3px;left:${Math.min(99,safe).toFixed(1)}%;width:2px;height:12px;background:var(--green);border-radius:1px"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--tx3);margin-bottom:6px"><span>0%</span><span style="color:var(--amber)">BE:${be.toFixed(0)}%</span><span style="color:var(--green)">Safe:${safe.toFixed(0)}%</span><span>100%</span></div>`:''}
+      <div style="font-size:10px;color:var(--tx3)">${note}</div>
+    </div>`;
+
+  const uNote=!unitBE?'Cannot break even at unit level — raise price or cut CAC':
+    uSt==='good'?`Orders profitable. ${cur2plus.toFixed(0)}% 2+ orders exceeds safe mix ${unitSafe.toFixed(0)}%.`:
+    uSt==='warn'?`Near unit break-even. Push bundles to reach safe mix (${unitSafe.toFixed(0)}%).`:
+    `Single-box orders lose ${fn(Math.abs(p1))} after CAC. Need ≥${unitBE.toFixed(0)}% 2+ mix.`;
+
+  const bNote=!bizBE?'Cannot cover fixed costs — reduce costs or grow volume':
+    bizBE>100?`Business break-even requires >100% 2+ orders. Reduce fixed costs (₪${fn(s.fixed)}/mo) or grow orders.`:
+    bSt==='good'?`Business profitable at current mix.`:
+    bSt==='warn'?`Near business break-even. Need ≥${bizBE.toFixed(0)}% 2+ mix to cover ₪${fn(s.fixed)}/mo fixed.`:
+    `Current mix doesn't cover fixed costs. Need ≥${bizBE.toFixed(0)}% 2+ box orders.`;
+
+  el.innerHTML=
+    layer('Unit economics — are orders profitable?',uColor,uSt,uLabel,cur2plus,unitBE||0,unitSafe||0,!!unitBE,uNote)+
+    layer('Business level — does the full business profit?',bColor,bSt,bLabel,cur2plus,bizBE||0,bizSafe||0,!!bizBE&&bizBE<=100,bNote);
+
+  // Update section badge
+  const bOmh=document.getElementById('b-omh');
+  if(bOmh){
+    const overall=bSt==='good'?'g':bSt==='warn'?'a':'r';
+    bOmh.textContent=bSt==='good'?'Healthy':bSt==='warn'?'At risk':'Loss-making';
+    bOmh.className='badge '+overall;
+  }
+}
+
+function renderBundleTable(){
+  const s=S;
+  const el=document.getElementById('bundleTable');
+  if(!el) return;
+
+  // Gross margin per order type
+  const gm1=((s.prodNet1-s.cogs)/Math.max(s.prodNet1,1))*100;
+  const gm2=((s.prodNet2-s.cogs*2)/Math.max(s.prodNet2,1))*100;
+  const gm3=((s.prodNet3-s.cogs*3)/Math.max(s.prodNet3,1))*100;
+
+  // Contribution per order type (before CAC)
+  const cm_1=s.cr1, cm_2=s.cr2, cm_3=s.cr3;
+
+  // Warnings
+  const warns=[];
+  if(s.cm2<s.cm1) warns.push({t:`2-box profit (${fn(s.cm2)}) is less than 1-box (${fn(s.cm1)}) — bundle discount too aggressive.`,c:'bad'});
+  if(s.cm3<s.cm2) warns.push({t:`3-box profit (${fn(s.cm3)}) is less than 2-box (${fn(s.cm2)}) — 3-box discount too high.`,c:'bad'});
+  if(gm2<50) warns.push({t:`2-box gross margin ${fp(gm2)} below 50% — discount eroding product economics.`,c:'warn'});
+  if(s.firstOrderProfit<15) warns.push({t:`Blended profit/order ${fn(s.firstOrderProfit)} below ₪15 target. Reduce discounts or raise base price.`,c:'warn'});
+
+  const row=(label,units,disc,finalPrice,freeShip,netRev,gm,contrib,profit,isBlend)=>`
+    <tr style="${isBlend?'background:rgba(155,124,255,.05)':''}">
+      <td class="bold">${label}</td>
+      <td>${units}</td>
+      <td style="color:var(--amber)">${disc===0?'—':'-'+disc+'%'}</td>
+      <td>${fn(finalPrice)}</td>
+      <td style="font-size:10px">${freeShip?'<span style="color:var(--green)">✓ Free</span>':'<span style="color:var(--tx3)">₪'+s.shipRev+'</span>'}</td>
+      <td>${fn(netRev)}</td>
+      <td class="${gm>=65?'g':gm>=50?'w':'r'}">${fp(gm)}</td>
+      <td class="${contrib>=0?'g':'r'}">${fn(contrib)}</td>
+      <td class="${profit>=15?'g':profit>=0?'w':'r'}" style="font-weight:600">${fns(profit)}</td>
+    </tr>`;
+
+  el.innerHTML=`
+    <table class="dt">
+      <thead><tr>
+        <th>Order type</th><th>Units</th><th>Discount</th><th>Final price</th>
+        <th>Shipping</th><th>Net revenue</th><th>Gross margin</th>
+        <th>Contribution</th><th>Profit / order</th>
+      </tr></thead>
+      <tbody>
+        ${row('1 box',1,+(s.disc1*100).toFixed(0),s.prodNet1,s.q1,s.rev1,gm1,cm_1,s.cm1,false)}
+        ${row('2 boxes',2,+(s.disc2*100).toFixed(0),s.prodNet2,s.q2,s.rev2,gm2,cm_2,s.cm2,false)}
+        ${row('3+ boxes',3,+(s.disc3*100).toFixed(0),s.prodNet3,s.q3,s.rev3,gm3,cm_3,s.cm3,false)}
+        <tr style="border-top:1px solid var(--br2);background:rgba(155,124,255,.06)">
+          <td class="bold" style="color:var(--purple)">Blended avg</td>
+          <td style="color:var(--tx3)">—</td>
+          <td style="color:var(--tx3)">—</td>
+          <td>${fn(s.aov)}</td>
+          <td style="color:var(--tx3)">—</td>
+          <td>${fn(s.aov)}</td>
+          <td class="${s.grossM>=65?'g':s.grossM>=50?'w':'r'}">${fp(s.grossM)}</td>
+          <td class="${s.blendContrib>=0?'g':'r'}">${fn(s.blendContrib)}</td>
+          <td class="${s.weightedProfitPerOrder>=20?'g':s.weightedProfitPerOrder>=15?'w':'r'}" style="font-weight:600">${fns(s.weightedProfitPerOrder)}</td>
+        </tr>
+      </tbody>
+    </table>
+    ${warns.length?`<div style="padding:8px 12px;display:flex;flex-direction:column;gap:5px">${warns.map(w=>`<div class="alert ${w.c}" style="font-size:11px">${w.t}</div>`).join('')}</div>`:''}`;
+}
+
+function renderBeMix(){
+  const s=S;
+  const el=document.getElementById('beMixWidget');
+  if(!el) return;
+
+  // ── Per-order-type profit after CAC ───────────────────────────────────────
+  const p1=s.cm1, p2=s.cm2, p3=s.cm3;
+
+  // Weighted avg profit of 2+ orders (preserving internal 2-box/3-box ratio)
+  const mix23=(s.m2+s.m3)||0.001;
+  const w2=s.m2/mix23, w3=s.m3/mix23;
+  const p2plus=w2*p2+w3*p3;
+
+  // Current 2+ mix %
+  const cur2plus=(s.m2+s.m3)*100;
+
+  // ── LAYER 1: Unit break-even ──────────────────────────────────────────────
+  // Solve: (1-x)*p1 + x*p2plus = 0  →  x = p1/(p1-p2plus)
+  let unitBE=null, unitSafe=null;
+  const canUnitBE=(p2plus>p1);
+  if(canUnitBE){
+    unitBE=Math.max(0,Math.min(100,(-p1/(p2plus-p1))*100));
+    unitSafe=Math.min(100,unitBE+10);
+  }
+
+  // ── LAYER 2: Business break-even (after fixed costs) ─────────────────────
+  // Blended profit/order as fn of 2+ mix x:
+  //   blended(x) = (1-x)*p1 + x*p2plus
+  // Monthly net = blended(x) * orders - fixed ≥ 0
+  //   → (1-x)*p1 + x*p2plus ≥ fixed/orders
+  //   → x*(p2plus-p1) ≥ fixed/orders - p1
+  //   → x ≥ (fixed/orders - p1) / (p2plus - p1)
+  let bizBE=null, bizSafe=null;
+  const profitTarget=s.opm>0?s.fixed/s.opm:Infinity; // ₪ needed per order to cover fixed
+  const canBizBE=(p2plus-p1)>0;
+  if(canBizBE){
+    bizBE=Math.max(0,Math.min(100,((profitTarget-p1)/(p2plus-p1))*100));
+    bizSafe=Math.min(100,bizBE+10);
+  }
+
+  // ── Status per layer ──────────────────────────────────────────────────────
+  const unitStatus=!canUnitBE?'bad':cur2plus>=unitSafe?'good':cur2plus>=unitBE-5?'warn':'bad';
+  const bizStatus=!canBizBE?'bad':cur2plus>=bizSafe?'good':cur2plus>=bizBE-5?'warn':'bad';
+
+  const unitColor=unitStatus==='good'?'var(--green)':unitStatus==='warn'?'var(--amber)':'var(--red)';
+  const bizColor=bizStatus==='good'?'var(--green)':bizStatus==='warn'?'var(--amber)':'var(--red)';
+
+  // ── Helper: render a mini bar ─────────────────────────────────────────────
+  const miniBar=(curPct,bePct,safePct,color)=>`
+    <div style="position:relative;height:6px;background:var(--s2);border-radius:3px;margin:5px 0 2px;overflow:visible">
+      <div style="position:absolute;top:0;left:0;width:${Math.min(100,curPct).toFixed(1)}%;height:6px;background:${color};opacity:.35;border-radius:3px"></div>
+      <div style="position:absolute;top:0;left:${Math.min(100,curPct).toFixed(1)}%;width:2px;height:6px;background:${color};border-radius:1px"></div>
+      ${bePct<=100?`<div style="position:absolute;top:-3px;left:${Math.min(100,bePct).toFixed(1)}%;width:2px;height:12px;background:var(--amber);border-radius:1px" title="BE: ${bePct.toFixed(0)}%"></div>`:''}
+      ${safePct<=100?`<div style="position:absolute;top:-3px;left:${Math.min(100,safePct).toFixed(1)}%;width:2px;height:12px;background:var(--green);border-radius:1px" title="Safe: ${safePct.toFixed(0)}%"></div>`:''}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--tx3);margin-bottom:4px">
+      <span>0%</span>
+      ${bePct<=100?`<span style="color:var(--amber)">BE:${bePct.toFixed(0)}%</span>`:''}
+      ${safePct<=100?`<span style="color:var(--green)">Safe:${safePct.toFixed(0)}%</span>`:''}
+      <span>100%</span>
+    </div>`;
+
+  el.innerHTML=`<div class="bemix-wrap">
+    <div class="bemix-title">Break-even mix — order distribution analysis</div>
+
+    <!-- Per-order reference -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+      <div style="background:var(--s2);border-radius:4px;padding:5px 7px;text-align:center">
+        <div style="font-size:8px;color:var(--tx3);margin-bottom:2px">1-box</div>
+        <div style="font-size:11px;font-weight:500;color:${p1>=0?'var(--green)':'var(--red)'}">${fns(p1)}</div>
+      </div>
+      <div style="background:var(--s2);border-radius:4px;padding:5px 7px;text-align:center">
+        <div style="font-size:8px;color:var(--tx3);margin-bottom:2px">2-box</div>
+        <div style="font-size:11px;font-weight:500;color:${p2>=0?'var(--green)':'var(--red)'}">${fns(p2)}</div>
+      </div>
+      <div style="background:var(--s2);border-radius:4px;padding:5px 7px;text-align:center">
+        <div style="font-size:8px;color:var(--tx3);margin-bottom:2px">3+ box</div>
+        <div style="font-size:11px;font-weight:500;color:${p3>=0?'var(--green)':'var(--red)'}">${fns(p3)}</div>
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--br);margin:6px 0"></div>
+
+    <!-- LAYER 1: Unit economics -->
+    <div style="font-size:9px;font-weight:600;color:${unitColor};letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Unit economics — orders profitable?</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px;font-size:10px">
+      <div><span style="color:var(--tx3)">Current 2+</span><br><span style="font-weight:600;color:${unitColor}">${cur2plus.toFixed(0)}%</span></div>
+      <div><span style="color:var(--tx3)">Break-even</span><br><span style="font-weight:600;color:var(--amber)">${canUnitBE?unitBE.toFixed(0)+'%':'N/A'}</span></div>
+      <div><span style="color:var(--tx3)">Safe (BE+10)</span><br><span style="font-weight:600;color:var(--green)">${canUnitBE?unitSafe.toFixed(0)+'%':'N/A'}</span></div>
+    </div>
+    ${canUnitBE?miniBar(cur2plus,unitBE,unitSafe,unitColor):''}
+    <div style="font-size:10px;padding:5px 7px;border-left:2px solid ${unitColor};background:rgba(0,0,0,.2);border-radius:0 4px 4px 0;margin-bottom:8px;color:${unitColor}">
+      ${!canUnitBE?'Even 100% multi-box cannot break even at unit level.':
+        unitStatus==='good'?`✓ Orders profitable. Current ${cur2plus.toFixed(0)}% exceeds unit safe mix ${unitSafe.toFixed(0)}%.`:
+        unitStatus==='warn'?`Near unit break-even. Need ≥${unitBE.toFixed(0)}%, have ${cur2plus.toFixed(0)}%.`:
+        `Below unit break-even. Need ≥${unitBE.toFixed(0)}% 2+ box orders (have ${cur2plus.toFixed(0)}%).`}
+    </div>
+
+    <div style="height:1px;background:var(--br);margin:6px 0"></div>
+
+    <!-- LAYER 2: Business profitability -->
+    <div style="font-size:9px;font-weight:600;color:${bizColor};letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Business level — covers fixed costs?</div>
+    <div style="font-size:9px;color:var(--tx3);margin-bottom:5px">Fixed costs ₪${fn(s.fixed)}/mo ÷ ${s.opm} orders = ₪${f(s.fixed/Math.max(s.opm,1),2)} needed/order</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px;font-size:10px">
+      <div><span style="color:var(--tx3)">Current 2+</span><br><span style="font-weight:600;color:${bizColor}">${cur2plus.toFixed(0)}%</span></div>
+      <div><span style="color:var(--tx3)">Break-even</span><br><span style="font-weight:600;color:var(--amber)">${canBizBE?(bizBE>100?'>100%':bizBE.toFixed(0)+'%'):'N/A'}</span></div>
+      <div><span style="color:var(--tx3)">Safe (BE+10)</span><br><span style="font-weight:600;color:var(--green)">${canBizBE?(bizSafe>100?'>100%':bizSafe.toFixed(0)+'%'):'N/A'}</span></div>
+    </div>
+    ${canBizBE&&bizBE<=100?miniBar(cur2plus,bizBE,bizSafe,bizColor):''}
+    <div style="font-size:10px;padding:5px 7px;border-left:2px solid ${bizColor};background:rgba(0,0,0,.2);border-radius:0 4px 4px 0;color:${bizColor}">
+      ${!canBizBE?'Cannot reach business break-even at current order volume or margins.':
+        bizBE>100?`Business break-even requires >100% 2+ mix — not achievable. Reduce fixed costs or grow orders.`:
+        bizStatus==='good'?`✓ Business profitable. Current mix covers fixed costs.`:
+        bizStatus==='warn'?`Near business break-even. Need ≥${bizBE.toFixed(0)}% 2+ orders, have ${cur2plus.toFixed(0)}%.`:
+        `Business losing money. Need ≥${bizBE.toFixed(0)}% 2+ box orders to cover fixed costs (have ${cur2plus.toFixed(0)}%).`}
+    </div>
+  </div>`;
+}
+
+function renderProfBreakdown(){
+  const s=S;
+  const el=document.getElementById('profBreakdown');
+  if(!el) return;
+
+  // ── All values pulled from pre-calculated state (single source of truth) ──
+  // Gross margin: (priceNet - COGS) / priceNet — product only, no shipping
+  const productRev=s.priceNet;
+  const afterCOGS=productRev-s.cogs;
+  const grossMpct=s.grossM;                          // (priceNet - cogs) / priceNet
+
+  // Contribution: blended across order mix, risk-adjusted — same as all other sections
+  const contribMargin=s.blendContribAdj;             // blended, risk-adjusted ₪
+  const contribPct=s.blendCmPctAdj;                  // blended CM% = contribAdj / blendProdRev
+
+  // Profit per order: blended contribution minus CAC
+  const profitPerOrder=s.firstOrderProfit;  // new customer: blendContribAdj - blendedCac
+  const profitPct=(profitPerOrder/Math.max(s.blendProdRev,1))*100;
+  const netProfitMarginPct=s.opm>0?(s.netProfit/(Math.max(s.opm*s.aov,1)))*100:0;
+
+  const stageColor=(v,lo,hi)=>v>=hi?'green':v>=lo?'amber':'red';
+  const s1c=stageColor(grossMpct,50,65);
+  const s2c=stageColor(contribPct,25,35);
+  const s3c=profitPerOrder>0?'green':profitPerOrder>-20?'amber':'red';
+  const s4c=netProfitMarginPct>10?'green':netProfitMarginPct>0?'amber':'red';
+
+  // maxV = product revenue (gross margin base, no shipping)
+  // Waterfall uses blended values (same as all other sections)
+  const blendShipRev=s.nm1*s.es1+s.nm2*s.es2+s.nm3*s.es3; // blended shipping rev
+  const blendVarCosts=s.blendProdRev+blendShipRev-s.blendContrib; // reverse-engineer total var cost
+  const blendFulfillEst=s.fulfill; // per-order fulfillment is fixed
+  const blendShipCostNet=s.shipCost-blendShipRev; // net shipping cost (absorbed)
+  const blendPayFee=(s.blendProdRev+blendShipRev)*s.payPct;
+  const maxV=Math.max(s.blendProdRev,1);
+  const wfRows=[
+    {l:'Product revenue (blended)',v:s.blendProdRev,bar:s.blendProdRev,c:'#0dd68f',sign:'',bold:false},
+    {l:'+ Shipping revenue (blended)',v:blendShipRev,bar:s.blendProdRev+blendShipRev,c:'#00d4c8',sign:'+',bold:false},
+    {l:'— COGS (blended)',v:-s.cogs,bar:afterCOGS,c:'#ff4466',sign:'-',bold:false},
+    {l:'= Gross margin',v:afterCOGS,bar:afterCOGS,c:'#0dd68f',sign:'',bold:true,note:'÷ product rev'},
+    {l:'— Fulfillment',v:-blendFulfillEst,bar:afterCOGS-blendFulfillEst,c:'#f5a623',sign:'-',bold:false},
+    {l:'— Net shipping cost',v:-Math.max(0,blendShipCostNet),bar:afterCOGS-blendFulfillEst-Math.max(0,blendShipCostNet),c:'#e07030',sign:'-',bold:false},
+    {l:'— Payment fee',v:-blendPayFee,bar:contribMargin+s.riskCostPerOrder,c:'#7060aa',sign:'-',bold:false},
+    {l:'= Contribution margin',v:contribMargin,bar:Math.max(contribMargin,0),c:contribMargin>=0?'#0dd68f':'#ff4466',sign:'',bold:true},
+    {l:'— Risk costs (refund+fail)',v:-s.riskCostPerOrder,bar:Math.max(contribMargin,0),c:'#cc3344',sign:'-',bold:false},
+    {l:'— CAC',v:-s.cac,bar:Math.max(profitPerOrder,0),c:'#ff4466',sign:'-',bold:false},
+    {l:'= Profit per order',v:profitPerOrder,bar:Math.max(profitPerOrder,0),c:profitPerOrder>=0?'#0dd68f':'#ff4466',sign:'',bold:true},
+  ];
+
+  let insightText='', insightClass='good';
+  if(grossMpct<50){insightText='Gross margin critically low ('+fp(grossMpct)+'). COGS too high — renegotiate supplier or raise price first.';insightClass='bad';}
+  else if(grossMpct<65){insightText='Gross margin '+fp(grossMpct)+' below target (65–75%). Pricing or COGS need improvement.';insightClass='warn';}
+  else if(contribPct<25){insightText='Healthy gross margin ('+fp(grossMpct)+'), but contribution is thin ('+fp(contribPct)+'). Fulfillment and shipping absorbing too much — negotiate logistics.';insightClass='warn';}
+  else if(profitPerOrder<0){insightText='Good gross margin ('+fp(grossMpct)+') and contribution ('+fp(contribPct)+'), but CAC ('+fn(s.cac)+') is too high — every new order loses '+fn(Math.abs(profitPerOrder))+'. Reduce CAC or rely on repeat customers.';insightClass='warn';}
+  else if(netProfitMarginPct<0){insightText='Strong unit economics — profit per order '+fn(profitPerOrder)+'. Losses driven by fixed costs ('+fn(s.fixed)+'/mo). Reach break-even at '+Math.ceil(s.beOrders||0)+' orders/mo.';insightClass='info';}
+  else{insightText='Solid economics at every stage. Gross '+fp(grossMpct)+' → Contribution '+fp(contribPct)+' → Profit/order '+fn(profitPerOrder)+'. Focus on scaling volume.';insightClass='good';}
+
+  el.innerHTML=`
+  <div class="prof-wrap">
+    <div class="prof-stages">
+      <div class="prof-stage ${s1c}">
+        <div class="prof-label">Stage 1<br>Gross Margin</div>
+        <div class="prof-box">
+          <div class="prof-val">${fp(grossMpct)}</div>
+          <div class="prof-pct">${fn(afterCOGS)}</div>
+          <div class="prof-target">${grossMpct>=65?'✓ On target':grossMpct>=50?'↓ Below 65%':'⚠ Critical'}</div>
+        </div>
+        <div style="font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;margin-top:5px;text-align:center">Target: 65–75% · (Rev–COGS)/Rev</div>
+      </div>
+      <div class="prof-stage ${s2c}">
+        <div class="prof-label">Stage 2<br>Contribution Margin</div>
+        <div class="prof-box">
+          <div class="prof-val">${fp(contribPct)}</div>
+          <div class="prof-pct">${fn(contribMargin)} / order</div>
+          <div style="font-size:9px;opacity:.65;margin-top:2px;font-family:'IBM Plex Mono',monospace">Pre-risk: ${fp(s.blendCmPct)}</div>
+          <div class="prof-target">${contribPct>=35?'✓ On target':contribPct>=25?'↓ Below 35%':'⚠ Thin'}</div>
+        </div>
+        <div style="font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;margin-top:5px;text-align:center">Target: 30–40% · includes refund/fail costs</div>
+      </div>
+      <div class="prof-stage ${s3c}">
+        <div class="prof-label">Stage 3<br>Blended Profit / Order</div>
+        <div class="prof-box">
+          <div class="prof-val">${fn(profitPerOrder)}</div>
+          <div class="prof-pct">${fp(Math.abs(profitPct))} of rev</div>
+          <div style="font-size:9px;opacity:.65;margin-top:3px;font-family:'IBM Plex Mono',monospace">1-box only: ${fns(s.cm1)}</div>
+          <div class="prof-target">${profitPerOrder>0?'✓ Blended +':'✗ Loss'}</div>
+        </div>
+        <div style="font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;margin-top:5px;text-align:center">New customer order · blended CAC (₪${f(s.blendedCac,0)})</div>
+      </div>
+      <div class="prof-stage ${s4c}">
+        <div class="prof-label">Stage 4<br>Net Profit Margin</div>
+        <div class="prof-box">
+          <div class="prof-val">${netProfitMarginPct>=0?'+':''}${fp(netProfitMarginPct)}</div>
+          <div class="prof-pct">${fn(s.netProfit)}/mo</div>
+          <div class="prof-target">${netProfitMarginPct>10?'✓ Strong':netProfitMarginPct>0?'Slim +':'✗ Loss'}</div>
+        </div>
+        <div style="font-size:9px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;margin-top:5px;text-align:center">After fixed costs</div>
+      </div>
+    </div>
+
+    <div style="font-size:10px;color:var(--tx3);font-family:'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Step-by-step waterfall</div>
+    <div class="prof-waterfall">
+      ${wfRows.map(r=>`
+      <div class="prof-wf-row">
+        <div class="prof-wf-lbl" style="font-weight:${r.bold?'600':'400'};color:${r.bold?'var(--tx)':'var(--tx2)'}">${r.l}${r.note?`<span style="font-size:8px;color:var(--tx3);margin-left:4px">${r.note}</span>`:''}</div>
+        <div class="prof-wf-bar-wrap">
+          <div class="prof-wf-bar" style="width:${Math.max(0,Math.min(100,(r.bar/maxV)*100)).toFixed(1)}%;background:${r.c}"></div>
+        </div>
+        <div class="prof-wf-val" style="color:${r.v<0?'var(--red)':r.bold?'var(--tx)':'var(--tx2)'};">${r.sign}${fn(Math.abs(r.v))}</div>
+      </div>`).join('')}
+    </div>
+    <div class="prof-insight alert ${insightClass}">${insightText}</div>
+  </div>`;
+}
+
+function renderCharts(){
+  const s=S;
+  // Chart 12-month
+  const ctx=document.getElementById('chart12');
+  if(ctx){
+    if(chart12Inst){chart12Inst.destroy();chart12Inst=null;}
+    chart12Inst=new Chart(ctx,{type:'bar',data:{
+      labels:s.months.map((_,i)=>'M'+(i+1)),
+      datasets:[
+        {type:'line',label:'Revenue',data:s.revenues,borderColor:'#4d9fff',borderWidth:1.5,pointRadius:2,pointBackgroundColor:'#4d9fff',tension:.35,yAxisID:'y2',borderDash:[4,3]},
+        {type:'bar',label:'Net profit',data:s.profits,backgroundColor:s.profits.map(v=>v>=0?'rgba(13,214,143,.6)':'rgba(255,68,102,.55)'),borderWidth:0,yAxisID:'y'}
+      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{autoSkip:false,maxRotation:0,color:'#636888',font:{size:10,family:'IBM Plex Mono'}},grid:{color:'rgba(37,38,56,.6)'}},
+        y:{ticks:{color:'#636888',font:{size:10,family:'IBM Plex Mono'},callback:v=>(v<0?'-₪':' ₪')+Math.abs(v).toLocaleString()},grid:{color:'rgba(37,38,56,.6)'}},
+        y2:{position:'right',ticks:{color:'#4d9fff',font:{size:8,family:'IBM Plex Mono'},callback:v=>'₪'+v.toLocaleString()},grid:{display:false}}}}});
+  }
+  // CAC vs Contribution chart
+  const ctx2=document.getElementById('chartCAC');
+  if(ctx2){
+    if(chartCACInst){chartCACInst.destroy();chartCACInst=null;}
+    chartCACInst=new Chart(ctx2,{type:'line',data:{
+      labels:s.months.map((_,i)=>'M'+(i+1)),
+      datasets:[
+        {label:'CAC',data:s.months.map(m=>+m.moCAC.toFixed(2)),borderColor:'#ff4466',borderWidth:1.5,pointRadius:2,pointBackgroundColor:'#ff4466',tension:.4,borderDash:[4,3]},
+        {label:'Contrib/order',data:s.months.map(m=>+m.moContrib.toFixed(2)),borderColor:'#0dd68f',borderWidth:1.5,pointRadius:2,pointBackgroundColor:'#0dd68f',tension:.4}
+      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{autoSkip:false,maxRotation:0,color:'#636888',font:{size:10,family:'IBM Plex Mono'}},grid:{color:'rgba(37,38,56,.6)'}},
+        y:{ticks:{color:'#636888',font:{size:10,family:'IBM Plex Mono'},callback:v=>'₪'+v.toFixed(0)},grid:{color:'rgba(37,38,56,.6)'}}}}});
+  }
+}
+
+// ─── Agent ───────────────────────────────────────────────────────────────────
+function buildSys(){
+  const s=S;
+  return `You are a founder-minded DTC business strategist for an early-stage Israeli supplements brand (₪ NIS).
+You see the FULL live dashboard — all 6 sections simultaneously. Be direct, sharp, 3 sentences max per point. No markdown headers. Reference ₪ numbers exactly.
+
+LIVE SNAPSHOT (scenario: ${s.currentScenario}):
+Unit Economics: Price net ₪${f(s.priceNet)} | COGS ₪${s.cogs} | Gross margin ${fp(s.grossM)} | Blended AOV ₪${f(s.aov)} | CM% ${fp(s.blendCmPctAdj)} (risk-adj) | First order profit ₪${f(s.firstOrderProfit)}
+Growth: Paid CAC ₪${s.cac} | Blended CAC ₪${f(s.blendedCac,2)} (${fp(s.organicPct*100)} organic) | CVR ${fp(s.cvr*100)} | Traffic needed ${s.trafficNeeded.toLocaleString()}/mo | Payback ${s.cacPaybackDays>=999?'∞':s.cacPaybackDays+'d'} | LTV:CAC ${f(s.ltvcac,2)}x | Repeat rate ${fp(s.repeatRate*100)}
+Profit split: Weighted profit/order ₪${f(s.weightedProfitPerOrder,2)} | First-order ₪${f(s.firstOrderProfit,2)} | Repeat ₪${f(s.repeatOrderProfit,2)}
+Monthly: ${s.opm} orders | Revenue ₪${f(s.opm*s.aov)} | Net profit ₪${f(s.netProfit)} | Break-even ${s.beOrders?Math.ceil(s.beOrders)+' orders':'not achievable'}
+Cash: Balance ₪${s.cashBal} | Runway ${s.cashRunway>=99?'∞':s.cashRunway+'mo'} | Monthly cash flow ₪${f(s.netCashFlow)} | Inventory (${s.invDays}d) ₪${f(s.invRequired)}
+Risk: Refund ${fp(s.refundRate*100)} | Failed delivery ${fp(s.failRate*100)} | Risk cost/order ₪${f(s.riskCostPerOrder)}
+12mo: Rev ₪${f(s.rev12)} | Profit ₪${f(s.profit12)} | Break-even month ${s.beMonth||'none'}
+Israeli context: supplements CAC ₪70-150, target LTV:CAC 3x+, healthy runway 6mo+.`;
+}
+function addMsg(role,text){
+  const c=document.getElementById('chatMsgs');
+  const d=document.createElement('div');d.className='msg '+role;
+  d.innerHTML=`<div class="bbl">${text.replace(/\n/g,'<br>')}</div><div class="mt">now</div>`;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function showTyping(){
+  const c=document.getElementById('chatMsgs');
+  const d=document.createElement('div');d.className='msg agent';d.id='tind';
+  d.innerHTML=`<div class="bbl"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function rmTyping(){const t=document.getElementById('tind');if(t)t.remove();}
+async function ask(txt){
+  const btn=document.getElementById('sbtn');
+  const st=document.getElementById('cstat');
+  btn.disabled=true;st.textContent='● Thinking...';st.className='as thinking';
+  addMsg('user',txt);chatHistory.push({role:'user',content:txt});showTyping();
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:buildSys(),messages:chatHistory})});
+    const data=await r.json();
+    if(data.error){rmTyping();addMsg('agent','API error: '+data.error.message);btn.disabled=false;st.textContent='● Live — watching all metrics';st.className='as';return;}
+    const reply=data.content?.filter(b=>b.type==='text').map(b=>b.text).join('\n')||'No response.';
+    rmTyping();addMsg('agent',reply);chatHistory.push({role:'assistant',content:reply});
+    if(chatHistory.length>24)chatHistory=chatHistory.slice(-24);
+  }catch(e){rmTyping();addMsg('agent','Error: '+e.message);}
+  btn.disabled=false;st.textContent='● Live — watching all metrics';st.className='as';
+}
+function sendMsg(){const inp=document.getElementById('ainput');const t=inp.value.trim();if(!t)return;inp.value='';ask(t);}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('input[type=number]').forEach(el=>el.addEventListener('input',calc));
+document.getElementById('fixedTotalBadge').textContent='₪4,000';
+addMsg('agent','Shalom! Dashboard live across all 6 sections — unit economics, growth drivers, 12-month sim, cash flow, risk factors, and scenario comparison.\n\nAsk me anything or switch scenarios (Base / Worst / Best) in the header.');
+calc();
+</script>
+</body>
+</html>
