@@ -641,8 +641,8 @@ function mobTab(tab, btn) {
   if (tab === 'inputs')  document.querySelector('.sidebar').classList.add('mob-active');
   if (tab === 'dash')    document.querySelector('.main').classList.add('mob-active');
   if (tab === 'agent')   document.querySelector('.agent').classList.add('mob-active');
-  // redraw charts after becoming visible
-  if (tab === 'dash') setTimeout(() => { if(chart12Inst) chart12Inst.resize(); if(chartCACInst) chartCACInst.resize(); }, 50);
+  // full recalc when dashboard becomes visible — charts need visible canvas to render
+  if (tab === 'dash') setTimeout(() => calc(), 30);
 }
 
 function initMobileLayout() {
